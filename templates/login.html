@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site_name }} - Admin Login</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+    <header class="topbar">
+        <div class="topbar-left">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+            <span class="site-title">{{ site_name }}</span>
+        </div>
+    </header>
+    <div class="login-section">
+        <div class="login-card">
+            <h2>Admin Login</h2>
+            {% if error %}
+            <div class="error-msg">{{ error }}</div>
+            {% endif %}
+            <form method="POST" action="/gatekeeper">
+                <input type="text" name="username" placeholder="Username" required autocomplete="off">
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" class="btn-primary btn-full">Login</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

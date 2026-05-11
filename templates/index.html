@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ site_name }}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+    <header class="topbar">
+        <div class="topbar-left">
+            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+            <span class="site-title" id="siteTitle">{{ site_name }}</span>
+        </div>
+    </header>
+
+    <!-- Token Entry -->
+    <div id="tokenSection" class="token-section">
+        <div class="token-card">
+            <h2>Enter Your Token</h2>
+            <p class="token-desc">Paste your access token to view incoming emails</p>
+            <div class="token-input-row">
+                <input type="text" id="tokenInput" placeholder="Paste token here..." autocomplete="off">
+                <button id="submitToken" class="btn-primary" onclick="submitToken()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gmail-like Email View -->
+    <div id="emailSection" class="email-section hidden">
+        <div class="email-toolbar">
+            <div class="email-toolbar-left">
+                <button class="btn-icon" onclick="goBack()" title="Back">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                </button>
+                <span class="email-address" id="emailAddress"></span>
+            </div>
+            <div class="email-toolbar-right">
+                <button id="scanBtn" class="btn-scan" onclick="startScan()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                    <span id="scanBtnText">Scan Email</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="gmail-layout">
+            <!-- Email List -->
+            <div class="email-list" id="emailList">
+                <div class="empty-state" id="emptyState">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    <p>No emails yet</p>
+                    <p class="empty-sub">Click "Scan Email" to check for new messages</p>
+                </div>
+            </div>
+
+            <!-- Email Detail -->
+            <div class="email-detail" id="emailDetail">
+                <div class="detail-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    <p>Select an email to read</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan notification bar -->
+        <div id="scanNotification" class="scan-notification hidden">
+            <span id="scanNotifText"></span>
+            <button class="btn-notif-scan" onclick="startScan()">Scan Again</button>
+        </div>
+    </div>
+
+    <script>
+        let currentToken = '';
+        let allEmails = [];
+        let scanTimer = null;
+        let scanCountdown = 30;
+
+        // Check URL for auto-scan
+        (function() {
+            const params = new URLSearchParams(window.location.search);
+            const t = params.get('token');
+            if (t) {
+                document.getElementById('tokenInput').value = t;
+                submitToken();
+            }
+        })();
+
+        async function submitToken() {
+            const token = document.getElementById('tokenInput').value.trim();
+            if (!token) return;
+            currentToken = token;
+
+            document.getElementById('tokenSection').classList.add('hidden');
+            document.getElementById('emailSection').classList.remove('hidden');
+
+            // Immediate scan
+            const formData = new FormData();
+            formData.append('token', token);
+
+            try {
+                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Invalid token');
+                    goBack();
+                    return;
+                }
+                const data = await resp.json();
+                document.getElementById('emailAddress').textContent = data.email;
+                mergeEmails(data.emails);
+                renderEmailList();
+            } catch (e) {
+                alert('Error connecting to server');
+                goBack();
+            }
+        }
+
+        function mergeEmails(newEmails) {
+            const existingIds = new Set(allEmails.map(e => e.id));
+            for (const em of newEmails) {
+                if (!existingIds.has(em.id)) {
+                    allEmails.push(em);
+                }
+            }
+            allEmails.sort((a, b) => {
+                const da = new Date(a.received_at);
+                const db = new Date(b.received_at);
+                return db - da;
+            });
+        }
+
+        function renderEmailList() {
+            const list = document.getElementById('emailList');
+            const empty = document.getElementById('emptyState');
+
+            if (allEmails.length === 0) {
+                // Keep empty state
+                list.innerHTML = '';
+                list.appendChild(empty);
+                empty.style.display = 'flex';
+                return;
+            }
+
+            empty.style.display = 'none';
+            list.innerHTML = '';
+            allEmails.forEach((em, idx) => {
+                const item = document.createElement('div');
+                item.className = 'email-item';
+                item.onclick = () => showDetail(idx);
+
+                const avatar = document.createElement('div');
+                avatar.className = 'email-avatar';
+                avatar.textContent = (em.sender || '?')[0].toUpperCase();
+                avatar.style.backgroundColor = stringToColor(em.sender || '');
+
+                const content = document.createElement('div');
+                content.className = 'email-item-content';
+
+                const topRow = document.createElement('div');
+                topRow.className = 'email-item-top';
+
+                const sender = document.createElement('span');
+                sender.className = 'email-sender';
+                sender.textContent = em.sender || 'Unknown';
+
+                const date = document.createElement('span');
+                date.className = 'email-date';
+                date.textContent = relativeTime(em.received_at);
+
+                topRow.appendChild(sender);
+                topRow.appendChild(date);
+
+                const subject = document.createElement('div');
+                subject.className = 'email-subject';
+                subject.textContent = em.subject || '(No Subject)';
+
+                const preview = document.createElement('div');
+                preview.className = 'email-preview';
+                preview.textContent = (em.body || '').substring(0, 100);
+
+                content.appendChild(topRow);
+                content.appendChild(subject);
+                content.appendChild(preview);
+
+                item.appendChild(avatar);
+                item.appendChild(content);
+                list.appendChild(item);
+            });
+        }
+
+        function showDetail(idx) {
+            const em = allEmails[idx];
+            if (!em) return;
+
+            // Highlight active item
+            document.querySelectorAll('.email-item').forEach((el, i) => {
+                el.classList.toggle('active', i === idx);
+            });
+
+            const detail = document.getElementById('emailDetail');
+            detail.innerHTML = `
+                <div class="detail-header">
+                    <h2 class="detail-subject">${escHtml(em.subject || '(No Subject)')}</h2>
+                    <div class="detail-meta">
+                        <div class="detail-avatar" style="background-color:${stringToColor(em.sender || '')}">${(em.sender || '?')[0].toUpperCase()}</div>
+                        <div class="detail-meta-text">
+                            <span class="detail-sender">${escHtml(em.sender || 'Unknown')}</span>
+                            <span class="detail-date">${formatDate(em.received_at)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-body">${escHtml(em.body || '(Empty)')}</div>
+            `;
+        }
+
+        function startScan() {
+            if (scanTimer) return;
+
+            const btn = document.getElementById('scanBtn');
+            const btnText = document.getElementById('scanBtnText');
+            btn.disabled = true;
+            btn.classList.add('scanning');
+            scanCountdown = 30;
+
+            // Hide previous notification
+            document.getElementById('scanNotification').classList.add('hidden');
+
+            btnText.textContent = `Scanning... ${scanCountdown}s`;
+            scanTimer = setInterval(() => {
+                scanCountdown--;
+                btnText.textContent = `Scanning... ${scanCountdown}s`;
+
+                if (scanCountdown <= 0) {
+                    clearInterval(scanTimer);
+                    scanTimer = null;
+                    btn.disabled = false;
+                    btn.classList.remove('scanning');
+                    btnText.textContent = 'Scan Email';
+
+                    // Fetch new emails
+                    doScan().then(() => {
+                        // Show small notification
+                        const notif = document.getElementById('scanNotification');
+                        const notifText = document.getElementById('scanNotifText');
+                        notifText.textContent = 'Scan complete. New emails have been loaded.';
+                        notif.classList.remove('hidden');
+
+                        setTimeout(() => {
+                            notif.classList.add('hidden');
+                        }, 10000);
+                    });
+                }
+            }, 1000);
+        }
+
+        async function doScan() {
+            const formData = new FormData();
+            formData.append('token', currentToken);
+            try {
+                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    mergeEmails(data.emails);
+                    renderEmailList();
+                }
+            } catch (e) {
+                console.error('Scan error', e);
+            }
+        }
+
+        function goBack() {
+            document.getElementById('emailSection').classList.add('hidden');
+            document.getElementById('tokenSection').classList.remove('hidden');
+            document.getElementById('scanNotification').classList.add('hidden');
+            allEmails = [];
+            currentToken = '';
+            if (scanTimer) {
+                clearInterval(scanTimer);
+                scanTimer = null;
+            }
+            document.getElementById('scanBtn').disabled = false;
+            document.getElementById('scanBtn').classList.remove('scanning');
+            document.getElementById('scanBtnText').textContent = 'Scan Email';
+            document.getElementById('emailDetail').innerHTML = `
+                <div class="detail-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    <p>Select an email to read</p>
+                </div>
+            `;
+            window.history.replaceState({}, '', '/');
+        }
+
+        function relativeTime(dt) {
+            const now = new Date();
+            const d = new Date(dt + 'Z');
+            const diff = (now - d) / 1000;
+            if (diff < 60) return 'now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            return d.toLocaleDateString();
+        }
+
+        function formatDate(dt) {
+            const d = new Date(dt + 'Z');
+            return d.toLocaleString();
+        }
+
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const h = hash % 360;
+            return `hsl(${h < 0 ? h + 360 : h}, 50%, 40%)`;
+        }
+
+        function escHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+    </script>
+</body>
+</html>
