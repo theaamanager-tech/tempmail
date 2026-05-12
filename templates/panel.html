@@ -255,10 +255,14 @@
             formData.append('digits', digits);
 
             try {
-            const resp = await fetch('/api/generate', { method: 'POST', body: formData, redirect: 'error' });
+            const resp = await fetch('/api/generate', { method: 'POST', body: formData });
+            if (resp.status === 401) {
+                window.location.href = '/gatekeeper';
+                return;
+            }
             if (!resp.ok) {
                 const err = await resp.json().catch(() => null);
-                showToast(err?.detail || 'Session expired, please login again', true);
+                showToast(err?.detail || 'Error generating accounts', true);
                 return;
             }
             const data = await resp.json();
@@ -287,7 +291,7 @@
                 updateStats();
             }
             } catch (e) {
-                showToast('Session expired, please login again', true);
+                showToast('Connection error', true);
             }
         }
 

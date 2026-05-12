@@ -286,7 +286,7 @@ async def admin_login(
     admin_pass = await get_setting(db, "admin_password")
     if username == admin_user and password == admin_pass:
         resp = RedirectResponse("/panel", status_code=303)
-        resp.set_cookie("admin_session", "authenticated", httponly=True)
+        resp.set_cookie("admin_session", "authenticated", httponly=True, path="/", samesite="lax")
         return resp
     site_name = await get_setting(db, "site_name")
     return templates.TemplateResponse(
@@ -297,6 +297,8 @@ async def admin_login(
 
 def require_admin(request: Request):
     if request.cookies.get("admin_session") != "authenticated":
+        if request.url.path.startswith("/api/"):
+            raise HTTPException(status_code=401, detail="Session expired, please login again")
         raise HTTPException(status_code=303, headers={"Location": "/gatekeeper"})
 
 
@@ -595,5 +597,5 @@ async def webhook_incoming(request: Request, db=Depends(get_db)):
 @app.get("/admin/logout")
 async def admin_logout():
     resp = RedirectResponse("/", status_code=303)
-    resp.delete_cookie("admin_session")
+    resp.delete_cookie("admin_session", path="/")
     return resp
