@@ -400,6 +400,7 @@ async def generate_accounts(
         raise HTTPException(400, "Count must be 1-100")
 
     created = []
+    last_error = None
     attempts = 0
     max_attempts = count * 10
     while len(created) < count and attempts < max_attempts:
@@ -425,7 +426,8 @@ async def generate_accounts(
                 if result is None:
                     continue
                 created.append({"email": email_addr, "token": token})
-            except Exception:
+            except Exception as e:
+                last_error = str(e)
                 continue
         else:
             # Check for duplicate email
@@ -450,6 +452,8 @@ async def generate_accounts(
 
     if not USE_SUPABASE:
         await db.commit()
+    if not created and last_error:
+        raise HTTPException(500, f"Failed to generate accounts: {last_error}")
     return {"created": created}
 
 
