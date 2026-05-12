@@ -803,7 +803,7 @@ body.dark {
 /* ─── Toast ────────────────────────────────────────────────── */
 .toast-global {
     position: fixed;
-    bottom: 24px;
+    top: 24px;
     right: 24px;
     background: var(--success);
     color: #000;
@@ -813,7 +813,7 @@ body.dark {
     font-weight: 600;
     z-index: 200;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    transform: translateY(100px);
+    transform: translateY(-100px);
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
     pointer-events: none;
