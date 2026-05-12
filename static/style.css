@@ -92,6 +92,98 @@ body.dark {
     border-color: var(--primary);
 }
 
+/* ─── Mode Tabs ────────────────────────────────────────────── */
+.mode-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 28px;
+}
+.mode-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text2);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mode-tab:hover { color: var(--text); }
+.mode-tab.active {
+    background: var(--primary);
+    color: #fff;
+}
+.mode-content { display: none; }
+.mode-content.active { display: block; }
+
+/* ─── TOTP Display ─────────────────────────────────────────── */
+.totp-display {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+.totp-code-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.totp-code {
+    font-size: 40px;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    letter-spacing: 6px;
+    color: var(--primary);
+    background: var(--bg);
+    padding: 16px 28px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    user-select: all;
+}
+.totp-copy {
+    padding: 10px;
+}
+.totp-timer-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+}
+.totp-ring-bg {
+    stroke: var(--border);
+}
+.totp-ring-fg {
+    stroke: var(--primary);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s linear;
+}
+.totp-seconds {
+    position: absolute;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+.btn-totp-stop {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn-totp-stop:hover { opacity: 0.85; }
+
 /* ─── Buttons ──────────────────────────────────────────────── */
 .btn-primary {
     background: var(--primary);
