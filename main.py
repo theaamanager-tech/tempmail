@@ -1,4 +1,5 @@
 import os
+import asyncio
 import base64
 import secrets
 import string
@@ -95,61 +96,69 @@ def _extract_gmail_body(payload: dict) -> str:
     return ""
 
 
+def _parse_gmail_message(msg_id: str, msg: dict) -> dict:
+    msg_headers = msg.get("payload", {}).get("headers", [])
+    sender = subject = date_str = ""
+    for h in msg_headers:
+        name = h["name"].lower()
+        if name == "from":
+            sender = h["value"]
+        elif name == "subject":
+            subject = h["value"]
+        elif name == "date":
+            date_str = h["value"]
+    body = _extract_gmail_body(msg.get("payload", {}))
+    received_at = date_str
+    if date_str:
+        try:
+            parsed = email.utils.parsedate_to_datetime(date_str)
+            received_at = parsed.isoformat()
+        except Exception:
+            pass
+    return {
+        "id": f"gmail-{msg_id}",
+        "sender": sender,
+        "subject": subject,
+        "body": body,
+        "received_at": received_at,
+    }
+
+
 async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
     try:
         token = await _get_gmail_access_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        query = f"to:{email_addr} after:{cutoff.strftime('%Y/%m/%d')}"
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+                headers=headers,
+                params={"q": query, "maxResults": 10},
+            )
+            if resp.status_code != 200:
+                return []
+            messages = resp.json().get("messages", [])
+            if not messages:
+                return []
+
+            async def fetch_one(msg_ref: dict) -> dict | None:
+                try:
+                    r = await client.get(
+                        f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}",
+                        headers=headers,
+                        params={"format": "full"},
+                    )
+                    if r.status_code != 200:
+                        return None
+                    return _parse_gmail_message(msg_ref["id"], r.json())
+                except Exception:
+                    return None
+
+            results = await asyncio.gather(*[fetch_one(m) for m in messages[:5]])
+            return [r for r in results if r is not None]
     except Exception:
         return []
-    headers = {"Authorization": f"Bearer {token}"}
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    query = f"to:{email_addr} after:{cutoff.strftime('%Y/%m/%d')}"
-    async with httpx.AsyncClient(timeout=8) as client:
-        resp = await client.get(
-            "https://gmail.googleapis.com/gmail/v1/users/me/messages",
-            headers=headers,
-            params={"q": query, "maxResults": 50},
-        )
-        if resp.status_code != 200:
-            return []
-        messages = resp.json().get("messages", [])
-        if not messages:
-            return []
-        emails = []
-        for msg_ref in messages[:20]:
-            msg_resp = await client.get(
-                f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}",
-                headers=headers,
-                params={"format": "full"},
-            )
-            if msg_resp.status_code != 200:
-                continue
-            msg = msg_resp.json()
-            msg_headers = msg.get("payload", {}).get("headers", [])
-            sender = subject = date_str = ""
-            for h in msg_headers:
-                name = h["name"].lower()
-                if name == "from":
-                    sender = h["value"]
-                elif name == "subject":
-                    subject = h["value"]
-                elif name == "date":
-                    date_str = h["value"]
-            body = _extract_gmail_body(msg.get("payload", {}))
-            received_at = date_str
-            if date_str:
-                try:
-                    parsed = email.utils.parsedate_to_datetime(date_str)
-                    received_at = parsed.isoformat()
-                except Exception:
-                    pass
-            emails.append({
-                "id": f"gmail-{msg_ref['id']}",
-                "sender": sender,
-                "subject": subject,
-                "body": body,
-                "received_at": received_at,
-            })
-        return emails
 
 
 # ─── Supabase REST Client ────────────────────────────────────────
@@ -367,12 +376,15 @@ async def scan_token(token: str = Form(...), db=Depends(get_db)):
             "order": "received_at.desc",
         })
         if USE_GMAIL:
-            gmail_emails = await _fetch_gmail_emails(email_addr)
-            existing_ids = {str(e.get("id")) for e in email_rows}
-            for ge in gmail_emails:
-                if ge["id"] not in existing_ids:
-                    email_rows.append(ge)
-            email_rows.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+            try:
+                gmail_emails = await _fetch_gmail_emails(email_addr)
+                existing_ids = {str(e.get("id")) for e in email_rows}
+                for ge in gmail_emails:
+                    if ge["id"] not in existing_ids:
+                        email_rows.append(ge)
+                email_rows.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+            except Exception:
+                pass
         return {"email": email_addr, "emails": email_rows}
 
     row = await db.execute(
@@ -393,12 +405,15 @@ async def scan_token(token: str = Form(...), db=Depends(get_db)):
     )
     all_emails = [dict(r) for r in await rows.fetchall()]
     if USE_GMAIL:
-        gmail_emails = await _fetch_gmail_emails(email_addr)
-        existing_ids = {str(e.get("id")) for e in all_emails}
-        for ge in gmail_emails:
-            if ge["id"] not in existing_ids:
-                all_emails.append(ge)
-        all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+        try:
+            gmail_emails = await _fetch_gmail_emails(email_addr)
+            existing_ids = {str(e.get("id")) for e in all_emails}
+            for ge in gmail_emails:
+                if ge["id"] not in existing_ids:
+                    all_emails.append(ge)
+            all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+        except Exception:
+            pass
     return {"email": email_addr, "emails": all_emails}
 
 
