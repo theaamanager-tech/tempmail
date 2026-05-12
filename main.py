@@ -1,7 +1,9 @@
 import os
+import base64
 import secrets
 import string
 import random
+import email.utils
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 
@@ -23,6 +25,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
 
 USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
+USE_GMAIL = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REFRESH_TOKEN)
 
 FIRST_NAMES = [
     "james", "john", "robert", "michael", "david", "william", "richard",
@@ -49,6 +52,104 @@ def _format_date(val: str | None) -> str:
         return dt.strftime("%d/%m/%Y")
     except (ValueError, TypeError):
         return val
+
+
+# ─── Gmail API Helpers ────────────────────────────────────────────
+
+_gmail_token_cache: dict = {"access_token": "", "expires_at": 0.0}
+
+
+async def _get_gmail_access_token() -> str:
+    now = datetime.now(timezone.utc).timestamp()
+    if _gmail_token_cache["access_token"] and _gmail_token_cache["expires_at"] > now + 60:
+        return _gmail_token_cache["access_token"]
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post("https://oauth2.googleapis.com/token", data={
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "refresh_token": GOOGLE_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        })
+        resp.raise_for_status()
+        data = resp.json()
+        _gmail_token_cache["access_token"] = data["access_token"]
+        _gmail_token_cache["expires_at"] = now + data.get("expires_in", 3600)
+        return data["access_token"]
+
+
+def _extract_gmail_body(payload: dict) -> str:
+    mime_type = payload.get("mimeType", "")
+    if mime_type == "text/plain":
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+    if mime_type.startswith("multipart/"):
+        for part in payload.get("parts", []):
+            result = _extract_gmail_body(part)
+            if result:
+                return result
+    if mime_type == "text/html":
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+    return ""
+
+
+async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
+    try:
+        token = await _get_gmail_access_token()
+    except Exception:
+        return []
+    headers = {"Authorization": f"Bearer {token}"}
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    query = f"to:{email_addr} after:{cutoff.strftime('%Y/%m/%d')}"
+    async with httpx.AsyncClient(timeout=8) as client:
+        resp = await client.get(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+            headers=headers,
+            params={"q": query, "maxResults": 50},
+        )
+        if resp.status_code != 200:
+            return []
+        messages = resp.json().get("messages", [])
+        if not messages:
+            return []
+        emails = []
+        for msg_ref in messages[:20]:
+            msg_resp = await client.get(
+                f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_ref['id']}",
+                headers=headers,
+                params={"format": "full"},
+            )
+            if msg_resp.status_code != 200:
+                continue
+            msg = msg_resp.json()
+            msg_headers = msg.get("payload", {}).get("headers", [])
+            sender = subject = date_str = ""
+            for h in msg_headers:
+                name = h["name"].lower()
+                if name == "from":
+                    sender = h["value"]
+                elif name == "subject":
+                    subject = h["value"]
+                elif name == "date":
+                    date_str = h["value"]
+            body = _extract_gmail_body(msg.get("payload", {}))
+            received_at = date_str
+            if date_str:
+                try:
+                    parsed = email.utils.parsedate_to_datetime(date_str)
+                    received_at = parsed.isoformat()
+                except Exception:
+                    pass
+            emails.append({
+                "id": f"gmail-{msg_ref['id']}",
+                "sender": sender,
+                "subject": subject,
+                "body": body,
+                "received_at": received_at,
+            })
+        return emails
 
 
 # ─── Supabase REST Client ────────────────────────────────────────
@@ -265,6 +366,13 @@ async def scan_token(token: str = Form(...), db=Depends(get_db)):
             "select": "id,sender,subject,body,received_at",
             "order": "received_at.desc",
         })
+        if USE_GMAIL:
+            gmail_emails = await _fetch_gmail_emails(email_addr)
+            existing_ids = {str(e.get("id")) for e in email_rows}
+            for ge in gmail_emails:
+                if ge["id"] not in existing_ids:
+                    email_rows.append(ge)
+            email_rows.sort(key=lambda x: x.get("received_at", ""), reverse=True)
         return {"email": email_addr, "emails": email_rows}
 
     row = await db.execute(
@@ -283,8 +391,15 @@ async def scan_token(token: str = Form(...), db=Depends(get_db)):
            ORDER BY received_at DESC""",
         (email_addr, str(int(cutoff))),
     )
-    emails = [dict(r) for r in await rows.fetchall()]
-    return {"email": email_addr, "emails": emails}
+    all_emails = [dict(r) for r in await rows.fetchall()]
+    if USE_GMAIL:
+        gmail_emails = await _fetch_gmail_emails(email_addr)
+        existing_ids = {str(e.get("id")) for e in all_emails}
+        for ge in gmail_emails:
+            if ge["id"] not in existing_ids:
+                all_emails.append(ge)
+        all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+    return {"email": email_addr, "emails": all_emails}
 
 
 # ─── Admin Auth ──────────────────────────────────────────────────
