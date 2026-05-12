@@ -405,6 +405,7 @@
             document.getElementById('scanNotification').classList.add('hidden');
             allEmails = [];
             currentToken = '';
+            document.getElementById('tokenInput').value = '';
             if (scanTimer) {
                 clearInterval(scanTimer);
                 scanTimer = null;
@@ -412,6 +413,14 @@
             document.getElementById('scanBtn').disabled = false;
             document.getElementById('scanBtn').classList.remove('scanning');
             document.getElementById('scanBtnText').textContent = 'Scan Email';
+            document.getElementById('emailAddress').textContent = '';
+            document.getElementById('emailList').innerHTML = `
+                <div class="empty-state" id="emptyState">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    <p>No emails yet</p>
+                    <p class="empty-sub">Click "Scan Email" to check for new messages</p>
+                </div>
+            `;
             document.getElementById('emailDetail').innerHTML = `
                 <div class="detail-placeholder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
