@@ -2,10 +2,11 @@ import os
 import secrets
 import string
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 
 import aiosqlite
+import httpx
 from fastapi import FastAPI, Request, Form, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +14,15 @@ from fastapi.templating import Jinja2Templates
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "tempmail.db")
+
+# ─── Environment Variables ───────────────────────────────────────
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REFRESH_TOKEN = os.environ.get("GOOGLE_REFRESH_TOKEN", "")
+
+USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
 
 FIRST_NAMES = [
     "james", "john", "robert", "michael", "david", "william", "richard",
@@ -31,7 +41,71 @@ LAST_NAMES = [
 ]
 
 
+# ─── Supabase REST Client ────────────────────────────────────────
+
+class SupabaseClient:
+    def __init__(self, url: str, key: str):
+        self.url = url.rstrip("/")
+        self.key = key
+        self.headers = {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        }
+
+    async def select(self, table: str, params: dict | None = None) -> list[dict]:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{self.url}/rest/v1/{table}",
+                headers=self.headers,
+                params=params or {},
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def insert(self, table: str, data: dict) -> dict | None:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.url}/rest/v1/{table}",
+                headers=self.headers,
+                json=data,
+            )
+            if resp.status_code == 409:
+                return None
+            resp.raise_for_status()
+            result = resp.json()
+            return result[0] if result else data
+
+    async def delete(self, table: str, params: dict) -> None:
+        async with httpx.AsyncClient() as client:
+            resp = await client.delete(
+                f"{self.url}/rest/v1/{table}",
+                headers=self.headers,
+                params=params,
+            )
+            resp.raise_for_status()
+
+    async def upsert(self, table: str, data: dict) -> dict:
+        headers = {**self.headers, "Prefer": "resolution=merge-duplicates,return=representation"}
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.url}/rest/v1/{table}",
+                headers=headers,
+                json=data,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            return result[0] if result else data
+
+
+supabase: SupabaseClient | None = SupabaseClient(SUPABASE_URL, SUPABASE_KEY) if USE_SUPABASE else None
+
+
 async def get_db():
+    if USE_SUPABASE:
+        yield supabase
+        return
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
     try:
@@ -97,7 +171,8 @@ async def init_db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    if not USE_SUPABASE:
+        await init_db()
     yield
 
 
@@ -107,12 +182,18 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
 async def get_setting(db, key: str) -> str:
+    if USE_SUPABASE:
+        rows = await db.select("settings", {"key": f"eq.{key}", "select": "value"})
+        return rows[0]["value"] if rows else ""
     row = await db.execute("SELECT value FROM settings WHERE key = ?", (key,))
     result = await row.fetchone()
     return result["value"] if result else ""
 
 
 async def get_all_settings(db) -> dict:
+    if USE_SUPABASE:
+        rows = await db.select("settings", {"select": "key,value"})
+        return {r["key"]: r["value"] for r in rows}
     rows = await db.execute("SELECT key, value FROM settings")
     results = await rows.fetchall()
     return {r["key"]: r["value"] for r in results}
@@ -130,6 +211,20 @@ async def index(request: Request, db=Depends(get_db)):
 
 @app.post("/api/scan")
 async def scan_token(token: str = Form(...), db=Depends(get_db)):
+    if USE_SUPABASE:
+        rows = await db.select("accounts", {"token": f"eq.{token}", "select": "email"})
+        if not rows:
+            raise HTTPException(status_code=404, detail="Invalid token")
+        email_addr = rows[0]["email"]
+        cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
+        email_rows = await db.select("emails", {
+            "recipient": f"eq.{email_addr}",
+            "received_at": f"gte.{cutoff_dt.isoformat()}",
+            "select": "id,sender,subject,body,received_at",
+            "order": "received_at.desc",
+        })
+        return {"email": email_addr, "emails": email_rows}
+
     row = await db.execute(
         "SELECT email FROM accounts WHERE token = ?", (token,)
     )
@@ -189,12 +284,21 @@ def require_admin(request: Request):
 async def admin_panel(request: Request, db=Depends(get_db)):
     require_admin(request)
     settings = await get_all_settings(db)
-    rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
-    domains = [r["domain"] for r in await rows.fetchall()]
-    rows = await db.execute(
-        "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
-    )
-    accounts = [dict(r) for r in await rows.fetchall()]
+    if USE_SUPABASE:
+        domain_rows = await db.select("domains", {"select": "domain", "order": "domain"})
+        domains = [r["domain"] for r in domain_rows]
+        account_rows = await db.select("accounts", {
+            "select": "id,email,domain,token,created_at",
+            "order": "created_at.desc",
+        })
+        accounts = account_rows
+    else:
+        rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
+        domains = [r["domain"] for r in await rows.fetchall()]
+        rows = await db.execute(
+            "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
+        )
+        accounts = [dict(r) for r in await rows.fetchall()]
     return templates.TemplateResponse(
         request, "panel.html",
         {"settings": settings, "domains": domains, "accounts": accounts},
@@ -206,6 +310,9 @@ async def admin_panel(request: Request, db=Depends(get_db)):
 @app.get("/api/domains")
 async def list_domains(request: Request, db=Depends(get_db)):
     require_admin(request)
+    if USE_SUPABASE:
+        rows = await db.select("domains", {"select": "domain", "order": "domain"})
+        return [r["domain"] for r in rows]
     rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
     return [r["domain"] for r in await rows.fetchall()]
 
@@ -216,6 +323,11 @@ async def add_domain(request: Request, domain: str = Form(...), db=Depends(get_d
     domain = domain.strip().lstrip("@").lower()
     if not domain:
         raise HTTPException(400, "Domain cannot be empty")
+    if USE_SUPABASE:
+        result = await db.insert("domains", {"domain": domain})
+        if result is None:
+            raise HTTPException(400, "Domain already exists")
+        return {"ok": True, "domain": domain}
     try:
         await db.execute("INSERT INTO domains (domain) VALUES (?)", (domain,))
         await db.commit()
@@ -227,6 +339,9 @@ async def add_domain(request: Request, domain: str = Form(...), db=Depends(get_d
 @app.delete("/api/domains/{domain}")
 async def delete_domain(domain: str, request: Request, db=Depends(get_db)):
     require_admin(request)
+    if USE_SUPABASE:
+        await db.delete("domains", {"domain": f"eq.{domain}"})
+        return {"ok": True}
     await db.execute("DELETE FROM domains WHERE domain = ?", (domain,))
     await db.commit()
     return {"ok": True}
@@ -261,32 +376,38 @@ async def generate_accounts(
             username = f"{first}{last}{num}"
 
         email_addr = f"{username}@{domain}"
-
-        # Check for duplicate email
-        row = await db.execute(
-            "SELECT id FROM accounts WHERE email = ?", (email_addr,)
-        )
-        if await row.fetchone():
-            continue
-
-        # Generate unique uppercase token
         token = secrets.token_hex(16).upper()
-        row = await db.execute(
-            "SELECT id FROM accounts WHERE token = ?", (token,)
-        )
-        if await row.fetchone():
-            continue
 
-        try:
-            await db.execute(
-                "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
-                (email_addr, domain, token),
+        if USE_SUPABASE:
+            result = await db.insert("accounts", {
+                "email": email_addr, "domain": domain, "token": token,
+            })
+            if result is None:
+                continue
+            created.append({"email": email_addr, "token": token})
+        else:
+            # Check for duplicate email
+            row = await db.execute(
+                "SELECT id FROM accounts WHERE email = ?", (email_addr,)
             )
-        except Exception:
-            continue
-        created.append({"email": email_addr, "token": token})
+            if await row.fetchone():
+                continue
+            row = await db.execute(
+                "SELECT id FROM accounts WHERE token = ?", (token,)
+            )
+            if await row.fetchone():
+                continue
+            try:
+                await db.execute(
+                    "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
+                    (email_addr, domain, token),
+                )
+            except Exception:
+                continue
+            created.append({"email": email_addr, "token": token})
 
-    await db.commit()
+    if not USE_SUPABASE:
+        await db.commit()
     return {"created": created}
 
 
@@ -302,7 +423,27 @@ async def manual_create(
         raise HTTPException(400, "Invalid email format")
     domain = email.split("@")[1]
 
-    # Check if email already exists
+    token = secrets.token_hex(16).upper()
+
+    if USE_SUPABASE:
+        existing = await db.select("accounts", {
+            "email": f"eq.{email}", "select": "email,token",
+        })
+        if existing:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": "Email already exists",
+                    "email": existing[0]["email"],
+                    "token": existing[0]["token"],
+                },
+            )
+        await db.insert("accounts", {
+            "email": email, "domain": domain, "token": token,
+        })
+        return {"email": email, "token": token}
+
+    # SQLite path
     row = await db.execute(
         "SELECT email, token FROM accounts WHERE email = ?", (email,)
     )
@@ -317,8 +458,6 @@ async def manual_create(
             },
         )
 
-    # Generate unique uppercase token
-    token = secrets.token_hex(16).upper()
     row = await db.execute(
         "SELECT id FROM accounts WHERE token = ?", (token,)
     )
@@ -336,6 +475,9 @@ async def manual_create(
 @app.delete("/api/accounts/{account_id}")
 async def delete_account(account_id: int, request: Request, db=Depends(get_db)):
     require_admin(request)
+    if USE_SUPABASE:
+        await db.delete("accounts", {"id": f"eq.{account_id}"})
+        return {"ok": True}
     await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
     await db.commit()
     return {"ok": True}
@@ -344,6 +486,11 @@ async def delete_account(account_id: int, request: Request, db=Depends(get_db)):
 @app.get("/api/accounts")
 async def list_accounts(request: Request, db=Depends(get_db)):
     require_admin(request)
+    if USE_SUPABASE:
+        return await db.select("accounts", {
+            "select": "id,email,domain,token,created_at",
+            "order": "created_at.desc",
+        })
     rows = await db.execute(
         "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
     )
@@ -354,6 +501,10 @@ async def list_accounts(request: Request, db=Depends(get_db)):
 async def update_settings(request: Request, db=Depends(get_db)):
     require_admin(request)
     data = await request.json()
+    if USE_SUPABASE:
+        for key, value in data.items():
+            await db.upsert("settings", {"key": key, "value": str(value)})
+        return {"ok": True}
     for key, value in data.items():
         await db.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
@@ -381,6 +532,15 @@ async def webhook_incoming(request: Request, db=Depends(get_db)):
 
     if not recipient:
         raise HTTPException(400, "recipient is required")
+
+    if USE_SUPABASE:
+        await db.insert("emails", {
+            "recipient": recipient,
+            "sender": sender,
+            "subject": subject,
+            "body": body,
+        })
+        return {"ok": True}
 
     await db.execute(
         "INSERT INTO emails (recipient, sender, subject, body) VALUES (?, ?, ?, ?)",
