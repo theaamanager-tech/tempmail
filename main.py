@@ -201,6 +201,16 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), na
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Server error: {type(exc).__name__}: {exc}"},
+        )
+    raise exc
+
+
 async def get_setting(db, key: str) -> str:
     if USE_SUPABASE:
         rows = await db.select("app_config", {"key": f"eq.{key}", "select": "value"})
@@ -408,12 +418,15 @@ async def generate_accounts(
         token = secrets.token_hex(8).upper()
 
         if USE_SUPABASE:
-            result = await db.insert("tokens", {
-                "email": email_addr, "token_id": token,
-            })
-            if result is None:
+            try:
+                result = await db.insert("tokens", {
+                    "email": email_addr, "token_id": token,
+                })
+                if result is None:
+                    continue
+                created.append({"email": email_addr, "token": token})
+            except Exception:
                 continue
-            created.append({"email": email_addr, "token": token})
         else:
             # Check for duplicate email
             row = await db.execute(
