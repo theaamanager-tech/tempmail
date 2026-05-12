@@ -424,6 +424,7 @@ async def generate_accounts(
             try:
                 result = await db.insert("tokens", {
                     "email": email_addr, "token_id": token,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
                 })
                 if result is None:
                     continue
@@ -488,6 +489,7 @@ async def manual_create(
             )
         await db.insert("tokens", {
             "email": email, "token_id": token,
+            "created_at": datetime.now(timezone.utc).isoformat(),
         })
         return {"email": email, "token": token}
 
