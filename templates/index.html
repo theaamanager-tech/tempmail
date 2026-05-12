@@ -14,16 +14,53 @@
         </div>
     </header>
 
-    <!-- Token Entry -->
+    <!-- Mode Tabs + Entry Section -->
     <div id="tokenSection" class="token-section">
         <div class="token-card">
-            <h2>Enter Your Token</h2>
-            <p class="token-desc">Paste your access token to view incoming emails</p>
-            <div class="token-input-row">
-                <input type="text" id="tokenInput" placeholder="Paste token here..." autocomplete="off">
-                <button id="submitToken" class="btn-primary" onclick="submitToken()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
+            <div class="mode-tabs">
+                <button class="mode-tab active" data-mode="token" onclick="switchMode('token')">Token</button>
+                <button class="mode-tab" data-mode="totp" onclick="switchMode('totp')">2FA Authenticator</button>
+            </div>
+
+            <!-- Token Mode -->
+            <div id="modeToken" class="mode-content active">
+                <h2>Enter Your Token</h2>
+                <p class="token-desc">Paste your access token to view incoming emails</p>
+                <div class="token-input-row">
+                    <input type="text" id="tokenInput" placeholder="Paste token here..." autocomplete="off">
+                    <button id="submitToken" class="btn-primary" onclick="submitToken()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2FA Authenticator Mode -->
+            <div id="modeTotp" class="mode-content">
+                <h2>2FA Authenticator</h2>
+                <p class="token-desc">Enter your TOTP secret to generate 2FA codes</p>
+                <div class="token-input-row">
+                    <input type="text" id="totpSecretInput" placeholder="Base32 secret (e.g. JBSWY3DPEHPK3PXP)" autocomplete="off">
+                    <button class="btn-primary" onclick="startTotp()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                    </button>
+                </div>
+                <!-- TOTP Display -->
+                <div id="totpDisplay" class="totp-display hidden">
+                    <div class="totp-code-wrapper">
+                        <div class="totp-code" id="totpCode">------</div>
+                        <button class="btn-icon totp-copy" onclick="copyTotpCode()" title="Copy code">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                    </div>
+                    <div class="totp-timer-wrapper">
+                        <svg class="totp-ring" width="48" height="48" viewBox="0 0 48 48">
+                            <circle class="totp-ring-bg" cx="24" cy="24" r="20" fill="none" stroke-width="4"/>
+                            <circle class="totp-ring-fg" id="totpRing" cx="24" cy="24" r="20" fill="none" stroke-width="4" stroke-dasharray="125.66" stroke-dashoffset="0" transform="rotate(-90 24 24)"/>
+                        </svg>
+                        <span class="totp-seconds" id="totpSeconds">30</span>
+                    </div>
+                    <button class="btn-totp-stop" onclick="stopTotp()">Stop</button>
+                </div>
             </div>
         </div>
     </div>
@@ -76,8 +113,100 @@
         let allEmails = [];
         let scanTimer = null;
         let scanCountdown = 30;
+        let totpInterval = null;
+        let totpSecret = null;
 
-        // Check URL for auto-scan
+        // ─── Mode Switching ─────────────────────────────────────
+        function switchMode(mode) {
+            document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+            document.getElementById('modeToken').classList.toggle('active', mode === 'token');
+            document.getElementById('modeTotp').classList.toggle('active', mode === 'totp');
+        }
+
+        // ─── TOTP (2FA Authenticator) ────────────────────────────
+        function base32Decode(input) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            input = input.replace(/[\s=-]+/g, '').toUpperCase();
+            let bits = '';
+            for (const c of input) {
+                const val = chars.indexOf(c);
+                if (val === -1) continue;
+                bits += val.toString(2).padStart(5, '0');
+            }
+            const bytes = new Uint8Array(Math.floor(bits.length / 8));
+            for (let i = 0; i < bytes.length; i++) {
+                bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+            }
+            return bytes;
+        }
+
+        async function hmacSha1(keyBytes, message) {
+            const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+            const sig = await crypto.subtle.sign('HMAC', key, message);
+            return new Uint8Array(sig);
+        }
+
+        async function generateTOTP(secretBytes, period = 30, digits = 6) {
+            const epoch = Math.floor(Date.now() / 1000);
+            const counter = Math.floor(epoch / period);
+            const counterBytes = new Uint8Array(8);
+            let tmp = counter;
+            for (let i = 7; i >= 0; i--) {
+                counterBytes[i] = tmp & 0xff;
+                tmp = Math.floor(tmp / 256);
+            }
+            const hash = await hmacSha1(secretBytes, counterBytes.buffer);
+            const offset = hash[hash.length - 1] & 0x0f;
+            const binary = ((hash[offset] & 0x7f) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | hash[offset + 3];
+            const otp = binary % Math.pow(10, digits);
+            return otp.toString().padStart(digits, '0');
+        }
+
+        async function startTotp() {
+            const raw = document.getElementById('totpSecretInput').value.trim();
+            if (!raw) return;
+            try {
+                totpSecret = base32Decode(raw);
+                if (totpSecret.length === 0) throw new Error('empty');
+            } catch (e) {
+                alert('Invalid Base32 secret');
+                return;
+            }
+            document.getElementById('totpDisplay').classList.remove('hidden');
+            await updateTotpCode();
+            if (totpInterval) clearInterval(totpInterval);
+            totpInterval = setInterval(updateTotpCode, 1000);
+        }
+
+        async function updateTotpCode() {
+            if (!totpSecret) return;
+            const code = await generateTOTP(totpSecret);
+            document.getElementById('totpCode').textContent = code.slice(0, 3) + ' ' + code.slice(3);
+            const epoch = Math.floor(Date.now() / 1000);
+            const remaining = 30 - (epoch % 30);
+            document.getElementById('totpSeconds').textContent = remaining;
+            const circumference = 2 * Math.PI * 20; // r=20
+            const offset = circumference * (1 - remaining / 30);
+            document.getElementById('totpRing').setAttribute('stroke-dashoffset', offset);
+        }
+
+        function stopTotp() {
+            if (totpInterval) { clearInterval(totpInterval); totpInterval = null; }
+            totpSecret = null;
+            document.getElementById('totpDisplay').classList.add('hidden');
+            document.getElementById('totpCode').textContent = '------';
+        }
+
+        function copyTotpCode() {
+            const code = document.getElementById('totpCode').textContent.replace(/\s/g, '');
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.querySelector('.totp-copy');
+                btn.style.color = 'var(--success)';
+                setTimeout(() => { btn.style.color = ''; }, 1500);
+            });
+        }
+
+        // ─── Check URL for auto-scan ────────────────────────────
         (function() {
             const params = new URLSearchParams(window.location.search);
             const t = params.get('token');
