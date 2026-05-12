@@ -477,30 +477,7 @@ body.dark {
     margin-bottom: 10px;
 }
 .sidebar-title { font-size: 18px; font-weight: 700; }
-.sidebar-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--success);
-    box-shadow: 0 0 8px var(--success);
-    animation: pulse-dot 2s infinite;
-}
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--success); }
-    50% { opacity: 0.6; box-shadow: 0 0 16px var(--success); }
-}
-.status-text {
-    font-size: 11px;
-    color: var(--success);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+
 .sidebar-section-label {
     padding: 16px 20px 6px;
     font-size: 10px;
@@ -680,13 +657,37 @@ body.dark {
 .input-row { display: flex; gap: 8px; }
 .input-row input { flex: 1; }
 
-.radio-group { display: flex; gap: 16px; }
-.radio-label {
+/* ─── Segmented Control ────────────────────────────────────── */
+.segmented-control {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 14px;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    border: 1px solid var(--border);
+}
+.segmented-control input[type="radio"] {
+    display: none;
+}
+.segmented-control .segment {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    text-align: center;
     cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.segmented-control .segment:hover {
+    color: var(--text);
+}
+.segmented-control input[type="radio"]:checked + .segment {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(79, 140, 255, 0.3);
 }
 
 /* ─── Results ──────────────────────────────────────────────── */

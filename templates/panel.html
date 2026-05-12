@@ -15,10 +15,7 @@
                     <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
                     <span class="sidebar-title" id="sidebarTitle">{{ settings.site_name }}</span>
                 </div>
-                <div class="sidebar-status">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Online</span>
-                </div>
+
             </div>
             <div class="sidebar-section-label">MAIN</div>
             <nav class="sidebar-nav">
@@ -113,13 +110,11 @@
                     </div>
                     <div class="form-group">
                         <label>Mode</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="genMode" value="random" checked onchange="toggleDigits()"> Random
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="genMode" value="human" onchange="toggleDigits()"> Human Name + Numeric
-                            </label>
+                        <div class="segmented-control">
+                            <input type="radio" name="genMode" id="modeRandom" value="random" checked onchange="toggleDigits()">
+                            <label for="modeRandom" class="segment">Random</label>
+                            <input type="radio" name="genMode" id="modeHuman" value="human" onchange="toggleDigits()">
+                            <label for="modeHuman" class="segment">Human Name + Numeric</label>
                         </div>
                     </div>
                     <div class="form-group" id="digitsGroup">
