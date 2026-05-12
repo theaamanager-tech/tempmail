@@ -379,7 +379,7 @@ async def generate_accounts(
             username = f"{first}{last}{num}"
 
         email_addr = f"{username}@{domain}"
-        token = secrets.token_hex(16).upper()
+        token = secrets.token_hex(8).upper()
 
         if USE_SUPABASE:
             result = await db.insert("tokens", {
@@ -426,7 +426,7 @@ async def manual_create(
         raise HTTPException(400, "Invalid email format")
     domain = email.split("@")[1]
 
-    token = secrets.token_hex(16).upper()
+    token = secrets.token_hex(8).upper()
 
     if USE_SUPABASE:
         existing = await db.select("tokens", {
@@ -465,7 +465,7 @@ async def manual_create(
         "SELECT id FROM accounts WHERE token = ?", (token,)
     )
     if await row.fetchone():
-        token = secrets.token_hex(16).upper()
+        token = secrets.token_hex(8).upper()
 
     await db.execute(
         "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
