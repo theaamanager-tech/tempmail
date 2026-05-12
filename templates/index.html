@@ -351,37 +351,35 @@
             const btnText = document.getElementById('scanBtnText');
             btn.disabled = true;
             btn.classList.add('scanning');
-            scanCountdown = 30;
-
-            // Hide previous notification
             document.getElementById('scanNotification').classList.add('hidden');
 
-            btnText.textContent = `Scanning... ${scanCountdown}s`;
-            scanTimer = setInterval(() => {
-                scanCountdown--;
-                btnText.textContent = `Scanning... ${scanCountdown}s`;
+            btnText.textContent = 'Scanning...';
+            doScan().then(() => {
+                const notif = document.getElementById('scanNotification');
+                const notifText = document.getElementById('scanNotifText');
+                notifText.textContent = 'Scan complete. New emails have been loaded.';
+                notif.classList.remove('hidden');
+                setTimeout(() => { notif.classList.add('hidden'); }, 10000);
 
-                if (scanCountdown <= 0) {
-                    clearInterval(scanTimer);
-                    scanTimer = null;
-                    btn.disabled = false;
-                    btn.classList.remove('scanning');
-                    btnText.textContent = 'Scan Email';
-
-                    // Fetch new emails
-                    doScan().then(() => {
-                        // Show small notification
-                        const notif = document.getElementById('scanNotification');
-                        const notifText = document.getElementById('scanNotifText');
-                        notifText.textContent = 'Scan complete. New emails have been loaded.';
-                        notif.classList.remove('hidden');
-
-                        setTimeout(() => {
-                            notif.classList.add('hidden');
-                        }, 10000);
-                    });
-                }
-            }, 1000);
+                // Cooldown: prevent spam-clicking for 10 seconds
+                scanCountdown = 10;
+                btnText.textContent = `Wait ${scanCountdown}s`;
+                scanTimer = setInterval(() => {
+                    scanCountdown--;
+                    btnText.textContent = `Wait ${scanCountdown}s`;
+                    if (scanCountdown <= 0) {
+                        clearInterval(scanTimer);
+                        scanTimer = null;
+                        btn.disabled = false;
+                        btn.classList.remove('scanning');
+                        btnText.textContent = 'Scan Email';
+                    }
+                }, 1000);
+            }).catch(() => {
+                btn.disabled = false;
+                btn.classList.remove('scanning');
+                btnText.textContent = 'Scan Email';
+            });
         }
 
         async function doScan() {
@@ -430,10 +428,18 @@
             window.history.replaceState({}, '', '/');
         }
 
+        function parseDate(dt) {
+            if (!dt) return null;
+            let d = new Date(dt);
+            if (isNaN(d.getTime())) d = new Date(dt + 'Z');
+            if (isNaN(d.getTime())) return null;
+            return d;
+        }
+
         function relativeTime(dt) {
-            const now = new Date();
-            const d = new Date(dt + 'Z');
-            const diff = (now - d) / 1000;
+            const d = parseDate(dt);
+            if (!d) return '';
+            const diff = (new Date() - d) / 1000;
             if (diff < 60) return 'now';
             if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
             if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
@@ -441,7 +447,8 @@
         }
 
         function formatDate(dt) {
-            const d = new Date(dt + 'Z');
+            const d = parseDate(dt);
+            if (!d) return '';
             return d.toLocaleString();
         }
 
