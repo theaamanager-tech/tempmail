@@ -255,7 +255,7 @@
             formData.append('digits', digits);
 
             try {
-            const resp = await fetch('/api/generate', { method: 'POST', body: formData });
+            const resp = await fetch('/api/generate', { method: 'POST', body: formData, credentials: 'include' });
             if (resp.status === 401) {
                 window.location.href = '/gatekeeper';
                 return;
@@ -302,7 +302,8 @@
             const formData = new FormData();
             formData.append('email', email);
 
-            const resp = await fetch('/api/manual-create', { method: 'POST', body: formData });
+            const resp = await fetch('/api/manual-create', { method: 'POST', body: formData, credentials: 'include' });
+            if (resp.status === 401) { window.location.href = '/gatekeeper'; return; }
             const data = await resp.json();
 
             if (resp.status === 409) {
@@ -373,7 +374,7 @@
 
         async function deleteAccount(id, btn) {
             if (!confirm('Delete this account?')) return;
-            const resp = await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+            const resp = await fetch(`/api/accounts/${id}`, { method: 'DELETE', credentials: 'include' });
             if (resp.ok) {
                 btn.closest('tr').remove();
                 showToast('Account deleted');
@@ -382,7 +383,7 @@
         }
 
         async function refreshAccounts() {
-            const resp = await fetch('/api/accounts');
+            const resp = await fetch('/api/accounts', { credentials: 'include' });
             const accounts = await resp.json();
             const body = document.getElementById('accountsBody');
             body.innerHTML = '';
@@ -421,7 +422,7 @@
             const formData = new FormData();
             formData.append('domain', domain);
 
-            const resp = await fetch('/api/domains', { method: 'POST', body: formData });
+            const resp = await fetch('/api/domains', { method: 'POST', body: formData, credentials: 'include' });
             if (!resp.ok) {
                 const err = await resp.json();
                 showToast(err.detail || 'Error', true);
@@ -448,7 +449,7 @@
 
         async function deleteDomain(domain, btn) {
             if (!confirm('Remove domain @' + domain + '?')) return;
-            const resp = await fetch(`/api/domains/${domain}`, { method: 'DELETE' });
+            const resp = await fetch(`/api/domains/${domain}`, { method: 'DELETE', credentials: 'include' });
             if (resp.ok) {
                 btn.closest('.domain-item').remove();
                 // Remove from dropdown
@@ -473,6 +474,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
+                credentials: 'include',
             });
             if (resp.ok) {
                 document.getElementById('sidebarTitle').textContent = data.site_name;
@@ -490,10 +492,10 @@
 
         // Update stat counts after operations
         function updateStats() {
-            fetch('/api/accounts/count').then(r => r.json()).then(d => {
+            fetch('/api/accounts/count', { credentials: 'include' }).then(r => r.json()).then(d => {
                 document.getElementById('statAccounts').textContent = d.count;
             });
-            fetch('/api/domains').then(r => r.json()).then(d => {
+            fetch('/api/domains', { credentials: 'include' }).then(r => r.json()).then(d => {
                 document.getElementById('statDomains').textContent = d.length;
             });
         }
