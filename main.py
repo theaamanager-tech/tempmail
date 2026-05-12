@@ -365,7 +365,10 @@ async def add_domain(request: Request, domain: str = Form(...), db=Depends(get_d
     if not domain:
         raise HTTPException(400, "Domain cannot be empty")
     if USE_SUPABASE:
-        result = await db.insert("app_domains", {"domain": domain})
+        result = await db.insert("app_domains", {
+            "domain": domain,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
         if result is None:
             raise HTTPException(400, "Domain already exists")
         return {"ok": True, "domain": domain}
@@ -604,6 +607,7 @@ async def webhook_incoming(request: Request, db=Depends(get_db)):
             "sender": sender,
             "subject": subject,
             "body": body,
+            "received_at": datetime.now(timezone.utc).isoformat(),
         })
         return {"ok": True}
 
