@@ -545,15 +545,6 @@ body.dark {
     align-items: center;
     gap: 16px;
 }
-.live-clock {
-    font-size: 13px;
-    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
-    color: var(--text2);
-    background: var(--surface);
-    padding: 6px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-}
 .admin-badge {
     display: flex;
     align-items: center;

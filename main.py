@@ -246,7 +246,10 @@ async def generate_accounts(
         raise HTTPException(400, "Count must be 1-100")
 
     created = []
-    for _ in range(count):
+    attempts = 0
+    max_attempts = count * 10
+    while len(created) < count and attempts < max_attempts:
+        attempts += 1
         if mode == "random":
             username = "".join(
                 random.choices(string.ascii_lowercase + string.digits, k=digits)
@@ -258,7 +261,22 @@ async def generate_accounts(
             username = f"{first}{last}{num}"
 
         email_addr = f"{username}@{domain}"
-        token = secrets.token_hex(16)
+
+        # Check for duplicate email
+        row = await db.execute(
+            "SELECT id FROM accounts WHERE email = ?", (email_addr,)
+        )
+        if await row.fetchone():
+            continue
+
+        # Generate unique uppercase token
+        token = secrets.token_hex(16).upper()
+        row = await db.execute(
+            "SELECT id FROM accounts WHERE token = ?", (token,)
+        )
+        if await row.fetchone():
+            continue
+
         try:
             await db.execute(
                 "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
@@ -283,15 +301,35 @@ async def manual_create(
     if "@" not in email:
         raise HTTPException(400, "Invalid email format")
     domain = email.split("@")[1]
-    token = secrets.token_hex(16)
-    try:
-        await db.execute(
-            "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
-            (email, domain, token),
+
+    # Check if email already exists
+    row = await db.execute(
+        "SELECT email, token FROM accounts WHERE email = ?", (email,)
+    )
+    existing = await row.fetchone()
+    if existing:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": "Email already exists",
+                "email": existing["email"],
+                "token": existing["token"],
+            },
         )
-        await db.commit()
-    except Exception:
-        raise HTTPException(400, "Email already exists")
+
+    # Generate unique uppercase token
+    token = secrets.token_hex(16).upper()
+    row = await db.execute(
+        "SELECT id FROM accounts WHERE token = ?", (token,)
+    )
+    if await row.fetchone():
+        token = secrets.token_hex(16).upper()
+
+    await db.execute(
+        "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
+        (email, domain, token),
+    )
+    await db.commit()
     return {"email": email, "token": token}
 
 

@@ -59,7 +59,6 @@
                     <h1 class="page-title" id="pageTitle">Generate Email</h1>
                 </div>
                 <div class="admin-topbar-right">
-                    <div class="live-clock" id="liveClock"></div>
                     <div class="admin-badge">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         Admin
@@ -236,13 +235,7 @@
             document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
         }
 
-        // Live clock
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('liveClock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
+
 
         function toggleDigits() {
             const mode = document.querySelector('input[name="genMode"]:checked').value;
@@ -306,12 +299,34 @@
             formData.append('email', email);
 
             const resp = await fetch('/api/manual-create', { method: 'POST', body: formData });
-            if (!resp.ok) {
-                const err = await resp.json();
-                showToast(err.detail || 'Error', true);
+            const data = await resp.json();
+
+            if (resp.status === 409) {
+                // Email already exists — show popup with existing token
+                const container = document.getElementById('manualResultContent');
+                container.innerHTML = `
+                    <div class="result-item" style="border-color: var(--scan);">
+                        <div class="result-info">
+                            <span class="result-email" style="color: var(--scan);">Account already exists</span>
+                            <span class="result-email">${data.email}</span>
+                            <code class="result-token">${data.token}</code>
+                        </div>
+                        <div class="result-actions">
+                            <button class="btn-sm btn-copy" onclick="copyEmailToken('${data.email}', '${data.token}')">Copy</button>
+                            <button class="btn-sm btn-scan-link" onclick="openScan('${data.token}')">Scan</button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('manualResult').classList.remove('hidden');
+                showToast('Account already exists — showing existing token', true);
                 return;
             }
-            const data = await resp.json();
+
+            if (!resp.ok) {
+                showToast(data.detail || 'Error', true);
+                return;
+            }
+
             const container = document.getElementById('manualResultContent');
             container.innerHTML = `
                 <div class="result-item">
