@@ -286,7 +286,7 @@ async def admin_login(
     admin_pass = await get_setting(db, "admin_password")
     if username == admin_user and password == admin_pass:
         resp = RedirectResponse("/panel", status_code=303)
-        resp.set_cookie("admin_session", "authenticated", httponly=True, path="/", samesite="lax")
+        resp.set_cookie("admin_session", "authenticated", httponly=True, path="/", samesite="lax", max_age=86400)
         return resp
     site_name = await get_setting(db, "site_name")
     return templates.TemplateResponse(
