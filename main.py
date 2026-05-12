@@ -183,7 +183,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 async def get_setting(db, key: str) -> str:
     if USE_SUPABASE:
-        rows = await db.select("settings", {"key": f"eq.{key}", "select": "value"})
+        rows = await db.select("app_config", {"key": f"eq.{key}", "select": "value"})
         return rows[0]["value"] if rows else ""
     row = await db.execute("SELECT value FROM settings WHERE key = ?", (key,))
     result = await row.fetchone()
@@ -192,7 +192,7 @@ async def get_setting(db, key: str) -> str:
 
 async def get_all_settings(db) -> dict:
     if USE_SUPABASE:
-        rows = await db.select("settings", {"select": "key,value"})
+        rows = await db.select("app_config", {"select": "key,value"})
         return {r["key"]: r["value"] for r in rows}
     rows = await db.execute("SELECT key, value FROM settings")
     results = await rows.fetchall()
@@ -212,7 +212,7 @@ async def index(request: Request, db=Depends(get_db)):
 @app.post("/api/scan")
 async def scan_token(token: str = Form(...), db=Depends(get_db)):
     if USE_SUPABASE:
-        rows = await db.select("accounts", {"token": f"eq.{token}", "select": "email"})
+        rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email"})
         if not rows:
             raise HTTPException(status_code=404, detail="Invalid token")
         email_addr = rows[0]["email"]
@@ -285,13 +285,16 @@ async def admin_panel(request: Request, db=Depends(get_db)):
     require_admin(request)
     settings = await get_all_settings(db)
     if USE_SUPABASE:
-        domain_rows = await db.select("domains", {"select": "domain", "order": "domain"})
+        domain_rows = await db.select("app_domains", {"select": "domain", "order": "domain"})
         domains = [r["domain"] for r in domain_rows]
-        account_rows = await db.select("accounts", {
-            "select": "id,email,domain,token,created_at",
+        account_rows = await db.select("tokens", {
+            "select": "id,email,token_id,created_at",
             "order": "created_at.desc",
         })
-        accounts = account_rows
+        accounts = [
+            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": r["created_at"]}
+            for r in account_rows
+        ]
     else:
         rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
         domains = [r["domain"] for r in await rows.fetchall()]
@@ -311,7 +314,7 @@ async def admin_panel(request: Request, db=Depends(get_db)):
 async def list_domains(request: Request, db=Depends(get_db)):
     require_admin(request)
     if USE_SUPABASE:
-        rows = await db.select("domains", {"select": "domain", "order": "domain"})
+        rows = await db.select("app_domains", {"select": "domain", "order": "domain"})
         return [r["domain"] for r in rows]
     rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
     return [r["domain"] for r in await rows.fetchall()]
@@ -324,7 +327,7 @@ async def add_domain(request: Request, domain: str = Form(...), db=Depends(get_d
     if not domain:
         raise HTTPException(400, "Domain cannot be empty")
     if USE_SUPABASE:
-        result = await db.insert("domains", {"domain": domain})
+        result = await db.insert("app_domains", {"domain": domain})
         if result is None:
             raise HTTPException(400, "Domain already exists")
         return {"ok": True, "domain": domain}
@@ -340,7 +343,7 @@ async def add_domain(request: Request, domain: str = Form(...), db=Depends(get_d
 async def delete_domain(domain: str, request: Request, db=Depends(get_db)):
     require_admin(request)
     if USE_SUPABASE:
-        await db.delete("domains", {"domain": f"eq.{domain}"})
+        await db.delete("app_domains", {"domain": f"eq.{domain}"})
         return {"ok": True}
     await db.execute("DELETE FROM domains WHERE domain = ?", (domain,))
     await db.commit()
@@ -379,8 +382,8 @@ async def generate_accounts(
         token = secrets.token_hex(16).upper()
 
         if USE_SUPABASE:
-            result = await db.insert("accounts", {
-                "email": email_addr, "domain": domain, "token": token,
+            result = await db.insert("tokens", {
+                "email": email_addr, "token_id": token,
             })
             if result is None:
                 continue
@@ -426,8 +429,8 @@ async def manual_create(
     token = secrets.token_hex(16).upper()
 
     if USE_SUPABASE:
-        existing = await db.select("accounts", {
-            "email": f"eq.{email}", "select": "email,token",
+        existing = await db.select("tokens", {
+            "email": f"eq.{email}", "select": "email,token_id",
         })
         if existing:
             return JSONResponse(
@@ -435,11 +438,11 @@ async def manual_create(
                 content={
                     "detail": "Email already exists",
                     "email": existing[0]["email"],
-                    "token": existing[0]["token"],
+                    "token": existing[0]["token_id"],
                 },
             )
-        await db.insert("accounts", {
-            "email": email, "domain": domain, "token": token,
+        await db.insert("tokens", {
+            "email": email, "token_id": token,
         })
         return {"email": email, "token": token}
 
@@ -473,10 +476,10 @@ async def manual_create(
 
 
 @app.delete("/api/accounts/{account_id}")
-async def delete_account(account_id: int, request: Request, db=Depends(get_db)):
+async def delete_account(account_id: str, request: Request, db=Depends(get_db)):
     require_admin(request)
     if USE_SUPABASE:
-        await db.delete("accounts", {"id": f"eq.{account_id}"})
+        await db.delete("tokens", {"id": f"eq.{account_id}"})
         return {"ok": True}
     await db.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
     await db.commit()
@@ -487,10 +490,14 @@ async def delete_account(account_id: int, request: Request, db=Depends(get_db)):
 async def list_accounts(request: Request, db=Depends(get_db)):
     require_admin(request)
     if USE_SUPABASE:
-        return await db.select("accounts", {
-            "select": "id,email,domain,token,created_at",
+        rows = await db.select("tokens", {
+            "select": "id,email,token_id,created_at",
             "order": "created_at.desc",
         })
+        return [
+            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": r["created_at"]}
+            for r in rows
+        ]
     rows = await db.execute(
         "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
     )
@@ -503,7 +510,7 @@ async def update_settings(request: Request, db=Depends(get_db)):
     data = await request.json()
     if USE_SUPABASE:
         for key, value in data.items():
-            await db.upsert("settings", {"key": key, "value": str(value)})
+            await db.upsert("app_config", {"key": key, "value": str(value)})
         return {"ok": True}
     for key, value in data.items():
         await db.execute(
