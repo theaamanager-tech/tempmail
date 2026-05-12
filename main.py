@@ -73,7 +73,9 @@ class SupabaseClient:
             )
             if resp.status_code == 409:
                 return None
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                detail = resp.text
+                raise Exception(f"Supabase {resp.status_code}: {detail}")
             result = resp.json()
             return result[0] if result else data
 
