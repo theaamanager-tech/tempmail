@@ -73,7 +73,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="statAccounts">{{ accounts|length }}</span>
+                        <span class="stat-value" id="statAccounts">{{ total_accounts }}</span>
                         <span class="stat-label">Total Accounts</span>
                     </div>
                 </div>
@@ -486,8 +486,8 @@
 
         // Update stat counts after operations
         function updateStats() {
-            fetch('/api/accounts').then(r => r.json()).then(d => {
-                document.getElementById('statAccounts').textContent = d.length;
+            fetch('/api/accounts/count').then(r => r.json()).then(d => {
+                document.getElementById('statAccounts').textContent = d.count;
             });
             fetch('/api/domains').then(r => r.json()).then(d => {
                 document.getElementById('statDomains').textContent = d.length;

@@ -86,6 +86,23 @@ class SupabaseClient:
             )
             resp.raise_for_status()
 
+    async def count(self, table: str, params: dict | None = None) -> int:
+        headers = {**self.headers, "Prefer": "count=exact"}
+        async with httpx.AsyncClient() as client:
+            resp = await client.head(
+                f"{self.url}/rest/v1/{table}",
+                headers=headers,
+                params=params or {},
+            )
+            resp.raise_for_status()
+            content_range = resp.headers.get("content-range", "")
+            # Format: "0-N/total" or "*/total"
+            if "/" in content_range:
+                total = content_range.split("/")[-1]
+                if total != "*":
+                    return int(total)
+            return 0
+
     async def upsert(self, table: str, data: dict, on_conflict: str = "key") -> dict:
         headers = {**self.headers, "Prefer": "resolution=merge-duplicates,return=representation"}
         async with httpx.AsyncClient() as client:
@@ -287,6 +304,7 @@ async def admin_panel(request: Request, db=Depends(get_db)):
     if USE_SUPABASE:
         domain_rows = await db.select("app_domains", {"select": "domain", "order": "domain"})
         domains = [r["domain"] for r in domain_rows]
+        total_accounts = await db.count("tokens")
         account_rows = await db.select("tokens", {
             "select": "id,email,token_id,created_at",
             "order": "created_at.desc",
@@ -298,13 +316,16 @@ async def admin_panel(request: Request, db=Depends(get_db)):
     else:
         rows = await db.execute("SELECT domain FROM domains ORDER BY domain")
         domains = [r["domain"] for r in await rows.fetchall()]
+        row = await db.execute("SELECT COUNT(*) as cnt FROM accounts")
+        result = await row.fetchone()
+        total_accounts = result["cnt"] if result else 0
         rows = await db.execute(
             "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
         )
         accounts = [dict(r) for r in await rows.fetchall()]
     return templates.TemplateResponse(
         request, "panel.html",
-        {"settings": settings, "domains": domains, "accounts": accounts},
+        {"settings": settings, "domains": domains, "accounts": accounts, "total_accounts": total_accounts},
     )
 
 
@@ -502,6 +523,17 @@ async def list_accounts(request: Request, db=Depends(get_db)):
         "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
     )
     return [dict(r) for r in await rows.fetchall()]
+
+
+@app.get("/api/accounts/count")
+async def count_accounts(request: Request, db=Depends(get_db)):
+    require_admin(request)
+    if USE_SUPABASE:
+        total = await db.count("tokens")
+        return {"count": total}
+    row = await db.execute("SELECT COUNT(*) as cnt FROM accounts")
+    result = await row.fetchone()
+    return {"count": result["cnt"] if result else 0}
 
 
 @app.post("/api/settings")
