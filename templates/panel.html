@@ -11,9 +11,16 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
-                <span class="sidebar-title" id="sidebarTitle">{{ settings.site_name }}</span>
+                <div class="sidebar-logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+                    <span class="sidebar-title" id="sidebarTitle">{{ settings.site_name }}</span>
+                </div>
+                <div class="sidebar-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Online</span>
+                </div>
             </div>
+            <div class="sidebar-section-label">MAIN</div>
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" data-tab="generate" onclick="switchTab('generate')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 5v14M5 12h14"/></svg>
@@ -27,6 +34,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
                     Email Accounts
                 </a>
+            </nav>
+            <div class="sidebar-section-label">SYSTEM</div>
+            <nav class="sidebar-nav">
                 <a href="#" class="nav-item" data-tab="domains" onclick="switchTab('domains')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
                     Domains
@@ -46,9 +56,52 @@
 
         <!-- Main Content -->
         <main class="admin-main">
+            <!-- Top Bar -->
+            <div class="admin-topbar">
+                <div class="admin-topbar-left">
+                    <h1 class="page-title" id="pageTitle">Generate Email</h1>
+                </div>
+                <div class="admin-topbar-right">
+                    <div class="live-clock" id="liveClock"></div>
+                    <div class="admin-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Admin
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-row" id="statsRow">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(79,140,255,0.15); color: var(--primary);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statAccounts">{{ accounts|length }}</span>
+                        <span class="stat-label">Total Accounts</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(46,213,115,0.15); color: var(--success);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statDomains">{{ domains|length }}</span>
+                        <span class="stat-label">Active Domains</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(255,165,2,0.15); color: var(--scan);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value live-pulse" id="statStatus">Live</span>
+                        <span class="stat-label">System Status</span>
+                    </div>
+                </div>
+            </div>
             <!-- Generate Email Tab -->
             <div class="tab-content active" id="tab-generate">
-                <h1>Generate Email</h1>
                 <div class="form-card">
                     <div class="form-group">
                         <label>Domain</label>
@@ -88,7 +141,6 @@
 
             <!-- Manual Create Tab -->
             <div class="tab-content" id="tab-manual">
-                <h1>Manual Create</h1>
                 <div class="form-card">
                     <div class="form-group">
                         <label>Email Address</label>
@@ -104,7 +156,6 @@
 
             <!-- Email Accounts Tab -->
             <div class="tab-content" id="tab-accounts">
-                <h1>Email Accounts</h1>
                 <div class="search-bar">
                     <input type="text" id="searchAccounts" placeholder="Search accounts..." oninput="filterAccounts()">
                 </div>
@@ -138,7 +189,6 @@
 
             <!-- Domains Tab -->
             <div class="tab-content" id="tab-domains">
-                <h1>Domains</h1>
                 <div class="form-card">
                     <div class="form-group">
                         <label>Add Domain</label>
@@ -160,7 +210,6 @@
 
             <!-- Settings Tab -->
             <div class="tab-content" id="tab-settings">
-                <h1>Settings</h1>
                 <div class="form-card">
                     <div class="form-group">
                         <label>Site Name</label>
@@ -184,12 +233,29 @@
     <div id="toast" class="toast-global hidden"></div>
 
     <script>
+        const tabTitles = {
+            generate: 'Generate Email',
+            manual: 'Manual Create',
+            accounts: 'Email Accounts',
+            domains: 'Domains',
+            settings: 'Settings'
+        };
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
         }
+
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
 
         function toggleDigits() {
             const mode = document.querySelector('input[name="genMode"]:checked').value;
@@ -232,6 +298,7 @@
                 document.getElementById('genResults').classList.remove('hidden');
                 showToast(`${data.created.length} account(s) generated`);
                 refreshAccounts();
+                updateStats();
             }
         }
 
@@ -266,6 +333,7 @@
             document.getElementById('manualEmail').value = '';
             showToast('Account created');
             refreshAccounts();
+            updateStats();
         }
 
         function copyEmailToken(email, token) {
@@ -284,6 +352,7 @@
             if (resp.ok) {
                 btn.closest('tr').remove();
                 showToast('Account deleted');
+                updateStats();
             }
         }
 
@@ -349,6 +418,7 @@
 
             document.getElementById('newDomain').value = '';
             showToast('Domain added');
+            updateStats();
         }
 
         async function deleteDomain(domain, btn) {
@@ -364,6 +434,7 @@
                     }
                 }
                 showToast('Domain removed');
+                updateStats();
             }
         }
 
@@ -388,9 +459,18 @@
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
             t.textContent = msg;
-            t.className = 'toast-global' + (isError ? ' error' : '');
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3000);
+            t.className = 'toast-global show' + (isError ? ' error' : '');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Update stat counts after operations
+        function updateStats() {
+            fetch('/api/accounts').then(r => r.json()).then(d => {
+                document.getElementById('statAccounts').textContent = d.length;
+            });
+            fetch('/api/domains').then(r => r.json()).then(d => {
+                document.getElementById('statDomains').textContent = d.length;
+            });
         }
     </script>
 </body>
