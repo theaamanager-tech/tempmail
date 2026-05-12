@@ -9,10 +9,25 @@
 <body class="dark">
     <header class="topbar">
         <div class="topbar-left">
-            <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
+            <svg class="logo-icon" id="logoIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
             <span class="site-title" id="siteTitle">{{ site_name }}</span>
         </div>
     </header>
+
+    <!-- Hidden Admin Login Modal -->
+    <div id="adminModal" class="admin-modal hidden">
+        <div class="admin-modal-backdrop" onclick="closeAdminModal()"></div>
+        <div class="admin-modal-card">
+            <button class="admin-modal-close" onclick="closeAdminModal()">&times;</button>
+            <h2>Admin Login</h2>
+            <div id="adminError" class="error-msg" style="display:none"></div>
+            <form id="adminLoginForm" onsubmit="return handleAdminLogin(event)">
+                <input type="text" id="adminUser" placeholder="Username" required autocomplete="off">
+                <input type="password" id="adminPass" placeholder="Password" required>
+                <button type="submit" class="btn-primary btn-full">Login</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Mode Tabs + Entry Section -->
     <div id="tokenSection" class="token-section">
@@ -449,6 +464,61 @@
             const d = document.createElement('div');
             d.textContent = s;
             return d.innerHTML;
+        }
+
+        // ─── Hidden Admin Login (click logo 5x) ─────────────────
+        let logoClickCount = 0;
+        let logoClickTimer = null;
+
+        document.getElementById('logoIcon').addEventListener('click', function() {
+            logoClickCount++;
+            clearTimeout(logoClickTimer);
+            logoClickTimer = setTimeout(() => { logoClickCount = 0; }, 2000);
+            if (logoClickCount >= 5) {
+                logoClickCount = 0;
+                clearTimeout(logoClickTimer);
+                openAdminModal();
+            }
+        });
+
+        function openAdminModal() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('adminUser').focus();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+            document.getElementById('adminUser').value = '';
+            document.getElementById('adminPass').value = '';
+            document.getElementById('adminError').style.display = 'none';
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('adminUser').value;
+            const password = document.getElementById('adminPass').value;
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            try {
+                const resp = await fetch('/gatekeeper', {
+                    method: 'POST',
+                    body: formData,
+                    redirect: 'follow',
+                });
+                if (resp.redirected) {
+                    window.location.href = resp.url;
+                    return;
+                }
+                const errEl = document.getElementById('adminError');
+                errEl.textContent = 'Invalid credentials';
+                errEl.style.display = 'block';
+            } catch (err) {
+                const errEl = document.getElementById('adminError');
+                errEl.textContent = 'Connection error';
+                errEl.style.display = 'block';
+            }
+            return false;
         }
     </script>
 </body>
