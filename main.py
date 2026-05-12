@@ -41,6 +41,16 @@ LAST_NAMES = [
 ]
 
 
+def _format_date(val: str | None) -> str:
+    if not val:
+        return ""
+    try:
+        dt = datetime.fromisoformat(val)
+        return dt.strftime("%d/%m/%Y")
+    except (ValueError, TypeError):
+        return val
+
+
 # ─── Supabase REST Client ────────────────────────────────────────
 
 class SupabaseClient:
@@ -324,10 +334,10 @@ async def admin_panel(request: Request, db=Depends(get_db)):
         total_accounts = await db.count("tokens")
         account_rows = await db.select("tokens", {
             "select": "id,email,token_id,created_at",
-            "order": "created_at.desc",
+            "order": "id.desc",
         })
         accounts = [
-            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": r["created_at"]}
+            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": _format_date(r["created_at"])}
             for r in account_rows
         ]
     else:
@@ -337,7 +347,7 @@ async def admin_panel(request: Request, db=Depends(get_db)):
         result = await row.fetchone()
         total_accounts = result["cnt"] if result else 0
         rows = await db.execute(
-            "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
+            "SELECT id, email, domain, token, created_at FROM accounts ORDER BY id DESC"
         )
         accounts = [dict(r) for r in await rows.fetchall()]
     return templates.TemplateResponse(
@@ -542,14 +552,14 @@ async def list_accounts(request: Request, db=Depends(get_db)):
     if USE_SUPABASE:
         rows = await db.select("tokens", {
             "select": "id,email,token_id,created_at",
-            "order": "created_at.desc",
+            "order": "id.desc",
         })
         return [
-            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": r["created_at"]}
+            {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": _format_date(r["created_at"])}
             for r in rows
         ]
     rows = await db.execute(
-        "SELECT id, email, domain, token, created_at FROM accounts ORDER BY created_at DESC"
+        "SELECT id, email, domain, token, created_at FROM accounts ORDER BY id DESC"
     )
     return [dict(r) for r in await rows.fetchall()]
 
