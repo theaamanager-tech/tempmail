@@ -159,12 +159,12 @@
                             {% for acc in accounts %}
                             <tr data-id="{{ acc.id }}" data-email="{{ acc.email }}" data-token="{{ acc.token }}">
                                 <td>{{ acc.email }}</td>
-                                <td class="token-cell"><code>{{ acc.token[:12] }}...</code></td>
+                                <td class="token-cell"><code onclick="copyToken('{{ acc.token }}')" title="Click to copy token" style="cursor:pointer;">{{ acc.token[:12] }}...</code></td>
                                 <td>{{ acc.created_at }}</td>
                                 <td class="actions-cell">
                                     <button class="btn-sm btn-copy" onclick="copyEmailToken('{{ acc.email }}', '{{ acc.token }}')" title="Copy email | token">Copy</button>
                                     <button class="btn-sm btn-scan-link" onclick="openScan('{{ acc.token }}')" title="Scan for emails">Scan</button>
-                                    <button class="btn-sm btn-danger" onclick="deleteAccount({{ acc.id }}, this)" title="Delete">Del</button>
+                                    <button class="btn-sm btn-danger" onclick="deleteAccount('{{ acc.id }}', this)" title="Delete">Del</button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -354,7 +354,17 @@
         }
 
         function openScan(token) {
-            window.open('/?token=' + encodeURIComponent(token), '_blank');
+            const url = '/?token=' + encodeURIComponent(token);
+            const w = window.open(url, '_blank');
+            if (!w || w.closed) {
+                window.location.href = url;
+            }
+        }
+
+        function copyToken(token) {
+            navigator.clipboard.writeText(token).then(() => {
+                showToast('Token copied!');
+            });
         }
 
         async function deleteAccount(id, btn) {
@@ -379,12 +389,12 @@
                 tr.dataset.token = acc.token;
                 tr.innerHTML = `
                     <td>${acc.email}</td>
-                    <td class="token-cell"><code>${acc.token.substring(0, 12)}...</code></td>
+                    <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${acc.token.substring(0, 12)}...</code></td>
                     <td>${acc.created_at}</td>
                     <td class="actions-cell">
                         <button class="btn-sm btn-copy" onclick="copyEmailToken('${acc.email}', '${acc.token}')" title="Copy email | token">Copy</button>
                         <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')" title="Scan for emails">Scan</button>
-                        <button class="btn-sm btn-danger" onclick="deleteAccount(${acc.id}, this)" title="Delete">Del</button>
+                        <button class="btn-sm btn-danger" onclick="deleteAccount('${acc.id}', this)" title="Delete">Del</button>
                     </td>
                 `;
                 body.appendChild(tr);
