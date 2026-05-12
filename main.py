@@ -88,15 +88,18 @@ class SupabaseClient:
 
     async def count(self, table: str, params: dict | None = None) -> int:
         headers = {**self.headers, "Prefer": "count=exact"}
+        query = {"select": "id", "limit": "0"}
+        if params:
+            query.update(params)
         async with httpx.AsyncClient() as client:
-            resp = await client.head(
+            resp = await client.get(
                 f"{self.url}/rest/v1/{table}",
                 headers=headers,
-                params=params or {},
+                params=query,
             )
             resp.raise_for_status()
             content_range = resp.headers.get("content-range", "")
-            # Format: "0-N/total" or "*/total"
+            # Format: "*/total" when limit=0
             if "/" in content_range:
                 total = content_range.split("/")[-1]
                 if total != "*":
