@@ -86,11 +86,11 @@ class SupabaseClient:
             )
             resp.raise_for_status()
 
-    async def upsert(self, table: str, data: dict) -> dict:
+    async def upsert(self, table: str, data: dict, on_conflict: str = "key") -> dict:
         headers = {**self.headers, "Prefer": "resolution=merge-duplicates,return=representation"}
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                f"{self.url}/rest/v1/{table}",
+                f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}",
                 headers=headers,
                 json=data,
             )
