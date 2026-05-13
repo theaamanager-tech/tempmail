@@ -75,7 +75,7 @@
                 <span class="email-address" id="emailAddress"></span>
             </div>
             <div class="email-toolbar-right">
-                <button id="scanBtn" class="btn-scan" onclick="startScan()">
+                <button id="scanBtn" class="btn-scan">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                     <span id="scanBtnText">Scan Email</span>
                 </button>
@@ -112,7 +112,8 @@
         let currentToken = '';
         let allEmails = [];
         let scanTimer = null;
-        let scanCountdown = 30;
+        let scanCountdown = 0;
+        let pollInterval = null;
         let totpInterval = null;
         let totpSecret = null;
 
@@ -206,6 +207,9 @@
             });
         }
 
+        // ─── Init scan button ────────────────────────────────────
+        document.getElementById('scanBtn').onclick = startScan;
+
         // ─── Check URL for auto-scan ────────────────────────────
         (function() {
             const params = new URLSearchParams(window.location.search);
@@ -240,6 +244,7 @@
                 document.getElementById('emailAddress').textContent = data.email;
                 mergeEmails(data.emails);
                 renderEmailList();
+                startPolling();
             } catch (e) {
                 alert('Error connecting to server');
                 goBack();
@@ -344,42 +349,40 @@
             `;
         }
 
-        function startScan() {
-            if (scanTimer) return;
-
+        function startPolling() {
+            stopPolling();
+            scanCountdown = 30;
             const btn = document.getElementById('scanBtn');
             const btnText = document.getElementById('scanBtnText');
-            btn.disabled = true;
             btn.classList.add('scanning');
+            btnText.textContent = `Scanning... ${scanCountdown}s`;
+            btn.onclick = stopPolling;
+
+            pollInterval = setInterval(() => doScan(), 5000);
+
+            scanTimer = setInterval(() => {
+                scanCountdown--;
+                btnText.textContent = `Scanning... ${scanCountdown}s`;
+                if (scanCountdown <= 0) {
+                    stopPolling();
+                }
+            }, 1000);
+        }
+
+        function stopPolling() {
+            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+            scanCountdown = 0;
+            const btn = document.getElementById('scanBtn');
+            const btnText = document.getElementById('scanBtnText');
+            btn.classList.remove('scanning');
+            btnText.textContent = 'Scan Email';
+            btn.onclick = startScan;
+        }
+
+        function startScan() {
             document.getElementById('scanNotification').classList.add('hidden');
-
-            btnText.textContent = 'Scanning...';
-            doScan().then(() => {
-                const notif = document.getElementById('scanNotification');
-                const notifText = document.getElementById('scanNotifText');
-                notifText.textContent = 'Scan complete. New emails have been loaded.';
-                notif.classList.remove('hidden');
-                setTimeout(() => { notif.classList.add('hidden'); }, 10000);
-
-                // Cooldown: prevent spam-clicking for 10 seconds
-                scanCountdown = 10;
-                btnText.textContent = `Wait ${scanCountdown}s`;
-                scanTimer = setInterval(() => {
-                    scanCountdown--;
-                    btnText.textContent = `Wait ${scanCountdown}s`;
-                    if (scanCountdown <= 0) {
-                        clearInterval(scanTimer);
-                        scanTimer = null;
-                        btn.disabled = false;
-                        btn.classList.remove('scanning');
-                        btnText.textContent = 'Scan Email';
-                    }
-                }, 1000);
-            }).catch(() => {
-                btn.disabled = false;
-                btn.classList.remove('scanning');
-                btnText.textContent = 'Scan Email';
-            });
+            doScan().then(() => startPolling());
         }
 
         async function doScan() {
@@ -404,13 +407,8 @@
             allEmails = [];
             currentToken = '';
             document.getElementById('tokenInput').value = '';
-            if (scanTimer) {
-                clearInterval(scanTimer);
-                scanTimer = null;
-            }
-            document.getElementById('scanBtn').disabled = false;
-            document.getElementById('scanBtn').classList.remove('scanning');
-            document.getElementById('scanBtnText').textContent = 'Scan Email';
+            stopPolling();
+            document.getElementById('scanBtn').onclick = startScan;
             document.getElementById('emailAddress').textContent = '';
             document.getElementById('emailList').innerHTML = `
                 <div class="empty-state" id="emptyState">
