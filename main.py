@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import asyncio
 import base64
 import secrets
@@ -781,9 +782,6 @@ async def webhook_incoming(request: Request, db=Depends(get_db)):
 
 # ─── API Key Helpers ─────────────────────────────────────────────
 
-import json as _json
-
-
 def _hash_api_key(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
@@ -815,7 +813,7 @@ async def _validate_api_key(db, api_key: str) -> dict:
         if not rows:
             raise HTTPException(401, "Invalid API key")
         row = rows[0]
-        domains = row["domains"] if isinstance(row["domains"], list) else _json.loads(row["domains"])
+        domains = row["domains"] if isinstance(row["domains"], list) else json.loads(row["domains"])
         return {"id": row["id"], "key_prefix": row["key_prefix"], "domains": domains}
     else:
         cursor = await db.execute(
@@ -824,7 +822,7 @@ async def _validate_api_key(db, api_key: str) -> dict:
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(401, "Invalid API key")
-        return {"id": row["id"], "key_prefix": row["key_prefix"], "domains": _json.loads(row["domains"])}
+        return {"id": row["id"], "key_prefix": row["key_prefix"], "domains": json.loads(row["domains"])}
 
 
 # ─── API Key Management (Admin) ──────────────────────────────────
@@ -854,7 +852,7 @@ async def create_api_key(
     else:
         await db.execute(
             "INSERT INTO api_keys (key_hash, key_prefix, domains) VALUES (?, ?, ?)",
-            (key_hash, key_prefix, _json.dumps(domains)),
+            (key_hash, key_prefix, json.dumps(domains)),
         )
         await db.commit()
 
@@ -871,7 +869,7 @@ async def list_api_keys(request: Request, db=Depends(get_db)):
         })
         result = []
         for r in rows:
-            domains = r["domains"] if isinstance(r["domains"], list) else _json.loads(r["domains"])
+            domains = r["domains"] if isinstance(r["domains"], list) else json.loads(r["domains"])
             result.append({
                 "id": r["id"],
                 "key_prefix": r["key_prefix"],
@@ -883,7 +881,7 @@ async def list_api_keys(request: Request, db=Depends(get_db)):
         "SELECT id, key_prefix, domains, created_at FROM api_keys ORDER BY id DESC"
     )
     return [
-        {"id": r["id"], "key_prefix": r["key_prefix"], "domains": _json.loads(r["domains"]), "created_at": r["created_at"]}
+        {"id": r["id"], "key_prefix": r["key_prefix"], "domains": json.loads(r["domains"]), "created_at": r["created_at"]}
         for r in await rows.fetchall()
     ]
 
