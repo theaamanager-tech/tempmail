@@ -38,6 +38,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
                     Domains
                 </a>
+                <a href="#" class="nav-item" data-tab="apikeys" onclick="switchTab('apikeys')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    API Keys
+                </a>
                 <a href="#" class="nav-item" data-tab="settings" onclick="switchTab('settings')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                     Settings
@@ -194,6 +198,78 @@
                 </div>
             </div>
 
+            <!-- API Keys Tab -->
+            <div class="tab-content" id="tab-apikeys">
+                <div class="form-card">
+                    <h3 style="margin:0 0 12px;color:var(--text-primary);">Generate New API Key</h3>
+                    <div class="form-group">
+                        <label>Allowed Domains</label>
+                        <div id="apiDomainChecks" class="api-domain-checks">
+                            {% for d in domains %}
+                            <label class="checkbox-label">
+                                <input type="checkbox" value="{{ d }}" checked> @{{ d }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="generateApiKey()">Generate API Key</button>
+                </div>
+
+                <div id="apiKeyResult" class="results-section hidden" style="margin-top:16px;">
+                    <div class="form-card" style="border:1px solid var(--success);">
+                        <h3 style="margin:0 0 8px;color:var(--success);">API Key Generated</h3>
+                        <p style="color:var(--text-secondary);font-size:13px;margin:0 0 12px;">Copy this key now. It won't be shown again.</p>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <code id="apiKeyValue" style="flex:1;padding:10px;background:var(--bg-tertiary);border-radius:6px;font-size:14px;color:var(--primary);word-break:break-all;"></code>
+                            <button class="btn-sm btn-copy" onclick="copyApiKey()">Copy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <h3 style="margin:0 0 12px;color:var(--text-primary);">Active API Keys</h3>
+                    <div id="apiKeysList" class="accounts-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Key</th>
+                                    <th>Domains</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="apiKeysBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="form-card" style="margin-top:20px;">
+                    <h3 style="margin:0 0 12px;color:var(--text-primary);">API Usage Guide</h3>
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+                        <p style="margin:0 0 8px;"><strong style="color:var(--text-primary);">1. Generate Email</strong></p>
+                        <pre style="background:var(--bg-tertiary);padding:12px;border-radius:6px;overflow-x:auto;margin:0 0 16px;"><code>POST /api/v1/generate
+Header: X-API-Key: YOUR_KEY
+Body: {"domain": "beking.online"}  // or "random"
+
+Response: {
+  "ok": true,
+  "created": [{"email": "abc@beking.online", "token": "ABCD1234"}]
+}</code></pre>
+                        <p style="margin:0 0 8px;"><strong style="color:var(--text-primary);">2. Check Inbox &amp; Get OTP</strong></p>
+                        <pre style="background:var(--bg-tertiary);padding:12px;border-radius:6px;overflow-x:auto;margin:0;"><code>POST /api/v1/inbox
+Header: X-API-Key: YOUR_KEY
+Body: {"token": "ABCD1234", "wait": 30}  // wait up to 30s
+
+Response: {
+  "ok": true,
+  "email": "abc@beking.online",
+  "otp": "980272",
+  "emails": [{"sender":"...", "subject":"...", ...}]
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings Tab -->
             <div class="tab-content" id="tab-settings">
                 <div class="form-card">
@@ -224,6 +300,7 @@
             manual: 'Manual Create',
             accounts: 'Email Accounts',
             domains: 'Domains',
+            apikeys: 'API Keys',
             settings: 'Settings'
         };
 
@@ -499,6 +576,74 @@
                 document.getElementById('statDomains').textContent = d.length;
             });
         }
+
+        // API Keys management
+        async function generateApiKey() {
+            const checks = document.querySelectorAll('#apiDomainChecks input[type=checkbox]:checked');
+            const domains = Array.from(checks).map(c => c.value);
+            if (domains.length === 0) {
+                showToast('Select at least one domain', true);
+                return;
+            }
+            try {
+                const resp = await fetch('/api/apikeys', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domains }),
+                    credentials: 'include',
+                });
+                if (resp.status === 401) { window.location.href = '/gatekeeper'; return; }
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => null);
+                    showToast(err?.detail || 'Error generating API key', true);
+                    return;
+                }
+                const data = await resp.json();
+                document.getElementById('apiKeyValue').textContent = data.key;
+                document.getElementById('apiKeyResult').classList.remove('hidden');
+                showToast('API key generated');
+                refreshApiKeys();
+            } catch (e) {
+                showToast('Connection error', true);
+            }
+        }
+
+        function copyApiKey() {
+            const key = document.getElementById('apiKeyValue').textContent;
+            navigator.clipboard.writeText(key).then(() => showToast('API key copied!'));
+        }
+
+        async function refreshApiKeys() {
+            try {
+                const resp = await fetch('/api/apikeys', { credentials: 'include' });
+                const keys = await resp.json();
+                const body = document.getElementById('apiKeysBody');
+                body.innerHTML = '';
+                keys.forEach(k => {
+                    const tr = document.createElement('tr');
+                    const domainTags = k.domains.map(d => `<span class="domain-tag">@${d}</span>`).join(' ');
+                    tr.innerHTML = `
+                        <td><code style="color:var(--primary);">${k.key_prefix}...</code></td>
+                        <td>${domainTags}</td>
+                        <td>${k.created_at}</td>
+                        <td><button class="btn-sm btn-danger" onclick="deleteApiKey(${k.id}, this)">Delete</button></td>
+                    `;
+                    body.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function deleteApiKey(id, btn) {
+            if (!confirm('Delete this API key? Bots using it will stop working.')) return;
+            const resp = await fetch(`/api/apikeys/${id}`, { method: 'DELETE', credentials: 'include' });
+            if (resp.ok) {
+                btn.closest('tr').remove();
+                showToast('API key deleted');
+            }
+        }
+
+        // Load API keys on page load
+        refreshApiKeys();
     </script>
 </body>
 </html>
