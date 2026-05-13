@@ -839,6 +839,41 @@ body.dark {
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* ─── API Keys ─────────────────────────────────────────────── */
+.api-domain-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-tertiary, #161b22);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.checkbox-label:hover { border-color: var(--primary); }
+.checkbox-label input[type="checkbox"] {
+    accent-color: var(--primary);
+    width: 14px;
+    height: 14px;
+}
+.domain-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(88,166,255,0.1);
+    color: var(--primary);
+    border-radius: 4px;
+    font-size: 12px;
+    margin: 1px 2px;
+}
+
 /* ─── Responsive ───────────────────────────────────────────── */
 @media (max-width: 768px) {
     .gmail-layout { flex-direction: column; }

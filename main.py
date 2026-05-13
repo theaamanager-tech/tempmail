@@ -1,9 +1,12 @@
 import os
+import re
+import json
 import asyncio
 import base64
 import secrets
 import string
 import random
+import hashlib
 import email.utils
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
@@ -297,6 +300,15 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key_hash TEXT UNIQUE NOT NULL,
+                key_prefix TEXT NOT NULL,
+                domains TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT DEFAULT (datetime('now'))
             )
         """)
         # Default settings
@@ -766,6 +778,283 @@ async def webhook_incoming(request: Request, db=Depends(get_db)):
     )
     await db.commit()
     return {"ok": True}
+
+
+# ─── API Key Helpers ─────────────────────────────────────────────
+
+def _hash_api_key(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def _extract_otp(text: str) -> str | None:
+    """Extract OTP code (4-8 digits) from email body."""
+    patterns = [
+        r'\b(\d{6})\b',
+        r'\b(\d{4})\b',
+        r'\b(\d{8})\b',
+        r'\b(\d{5})\b',
+        r'\b(\d{7})\b',
+    ]
+    for p in patterns:
+        matches = re.findall(p, text)
+        if matches:
+            return matches[0]
+    return None
+
+
+async def _validate_api_key(db, api_key: str) -> dict:
+    """Validate API key and return key record with allowed domains."""
+    key_hash = _hash_api_key(api_key)
+    if USE_SUPABASE:
+        rows = await db.select("api_keys", {
+            "key_hash": f"eq.{key_hash}",
+            "select": "id,key_prefix,domains,created_at",
+        })
+        if not rows:
+            raise HTTPException(401, "Invalid API key")
+        row = rows[0]
+        domains = row["domains"] if isinstance(row["domains"], list) else json.loads(row["domains"])
+        return {"id": row["id"], "key_prefix": row["key_prefix"], "domains": domains}
+    else:
+        cursor = await db.execute(
+            "SELECT id, key_prefix, domains FROM api_keys WHERE key_hash = ?", (key_hash,)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(401, "Invalid API key")
+        return {"id": row["id"], "key_prefix": row["key_prefix"], "domains": json.loads(row["domains"])}
+
+
+# ─── API Key Management (Admin) ──────────────────────────────────
+
+@app.post("/api/apikeys")
+async def create_api_key(
+    request: Request,
+    db=Depends(get_db),
+):
+    require_admin(request)
+    data = await request.json()
+    domains = data.get("domains", [])
+    if not domains:
+        raise HTTPException(400, "At least one domain must be selected")
+
+    raw_key = "sk-" + secrets.token_hex(24)
+    key_hash = _hash_api_key(raw_key)
+    key_prefix = raw_key[:12]
+
+    if USE_SUPABASE:
+        await db.insert("api_keys", {
+            "key_hash": key_hash,
+            "key_prefix": key_prefix,
+            "domains": domains,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    else:
+        await db.execute(
+            "INSERT INTO api_keys (key_hash, key_prefix, domains) VALUES (?, ?, ?)",
+            (key_hash, key_prefix, json.dumps(domains)),
+        )
+        await db.commit()
+
+    return {"key": raw_key, "key_prefix": key_prefix, "domains": domains}
+
+
+@app.get("/api/apikeys")
+async def list_api_keys(request: Request, db=Depends(get_db)):
+    require_admin(request)
+    if USE_SUPABASE:
+        rows = await db.select("api_keys", {
+            "select": "id,key_prefix,domains,created_at",
+            "order": "id.desc",
+        })
+        result = []
+        for r in rows:
+            domains = r["domains"] if isinstance(r["domains"], list) else json.loads(r["domains"])
+            result.append({
+                "id": r["id"],
+                "key_prefix": r["key_prefix"],
+                "domains": domains,
+                "created_at": _format_date(r["created_at"]),
+            })
+        return result
+    rows = await db.execute(
+        "SELECT id, key_prefix, domains, created_at FROM api_keys ORDER BY id DESC"
+    )
+    return [
+        {"id": r["id"], "key_prefix": r["key_prefix"], "domains": json.loads(r["domains"]), "created_at": r["created_at"]}
+        for r in await rows.fetchall()
+    ]
+
+
+@app.delete("/api/apikeys/{key_id}")
+async def delete_api_key(key_id: int, request: Request, db=Depends(get_db)):
+    require_admin(request)
+    if USE_SUPABASE:
+        await db.delete("api_keys", {"id": f"eq.{key_id}"})
+        return {"ok": True}
+    await db.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
+    await db.commit()
+    return {"ok": True}
+
+
+# ─── Bot API v1 Endpoints ────────────────────────────────────────
+
+@app.post("/api/v1/generate")
+async def api_v1_generate(
+    request: Request,
+    db=Depends(get_db),
+):
+    api_key = request.headers.get("x-api-key", "")
+    if not api_key:
+        raise HTTPException(401, "Missing X-API-Key header")
+    key_info = await _validate_api_key(db, api_key)
+    allowed_domains = key_info["domains"]
+
+    data = await request.json()
+    domain = data.get("domain", "random")
+    count = min(max(data.get("count", 1), 1), 10)
+
+    if domain == "random":
+        domain = random.choice(allowed_domains)
+    elif domain not in allowed_domains:
+        raise HTTPException(403, f"Domain '{domain}' not allowed for this API key. Allowed: {', '.join(allowed_domains)}")
+
+    created = []
+    attempts = 0
+    max_attempts = count * 10
+    while len(created) < count and attempts < max_attempts:
+        attempts += 1
+        username = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
+        email_addr = f"{username}@{domain}"
+        token = secrets.token_hex(8).upper()
+
+        if USE_SUPABASE:
+            result = await db.insert("tokens", {
+                "email": email_addr, "token_id": token,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            if result is None:
+                continue
+            created.append({"email": email_addr, "token": token})
+        else:
+            row = await db.execute("SELECT id FROM accounts WHERE email = ?", (email_addr,))
+            if await row.fetchone():
+                continue
+            await db.execute(
+                "INSERT INTO accounts (email, domain, token) VALUES (?, ?, ?)",
+                (email_addr, domain, token),
+            )
+            created.append({"email": email_addr, "token": token})
+
+    if not USE_SUPABASE and created:
+        await db.commit()
+
+    if not created:
+        raise HTTPException(500, "Failed to generate accounts")
+    return {"ok": True, "created": created}
+
+
+@app.post("/api/v1/inbox")
+async def api_v1_inbox(
+    request: Request,
+    db=Depends(get_db),
+):
+    api_key = request.headers.get("x-api-key", "")
+    if not api_key:
+        raise HTTPException(401, "Missing X-API-Key header")
+    key_info = await _validate_api_key(db, api_key)
+
+    data = await request.json()
+    token_val = data.get("token", "")
+    wait_seconds = min(max(data.get("wait", 0), 0), 60)
+
+    if not token_val:
+        raise HTTPException(400, "token is required")
+
+    if USE_SUPABASE:
+        rows = await db.select("tokens", {"token_id": f"eq.{token_val}", "select": "email"})
+        if not rows:
+            raise HTTPException(404, "Invalid token")
+        email_addr = rows[0]["email"]
+    else:
+        row = await db.execute("SELECT email FROM accounts WHERE token = ?", (token_val,))
+        account = await row.fetchone()
+        if not account:
+            raise HTTPException(404, "Invalid token")
+        email_addr = account["email"]
+
+    async def _fetch_emails():
+        all_emails = []
+        if USE_SUPABASE:
+            cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
+            email_rows = await db.select("emails", {
+                "recipient": f"eq.{email_addr}",
+                "received_at": f"gte.{cutoff_dt.isoformat()}",
+                "select": "id,sender,subject,body,received_at",
+                "order": "received_at.desc",
+            })
+            all_emails.extend(email_rows)
+        else:
+            cutoff = datetime.now(timezone.utc).timestamp() - 86400
+            cursor = await db.execute(
+                """SELECT id, sender, subject, body, received_at FROM emails
+                   WHERE recipient = ? AND strftime('%s', received_at) > ?
+                   ORDER BY received_at DESC""",
+                (email_addr, str(int(cutoff))),
+            )
+            all_emails.extend([dict(r) for r in await cursor.fetchall()])
+
+        if USE_GMAIL:
+            try:
+                gmail_emails = await _fetch_gmail_emails(email_addr)
+                existing_ids = {str(e.get("id")) for e in all_emails}
+                for ge in gmail_emails:
+                    if ge["id"] not in existing_ids:
+                        all_emails.append(ge)
+                all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+            except Exception:
+                pass
+        return all_emails
+
+    emails = await _fetch_emails()
+
+    if not emails and wait_seconds > 0:
+        elapsed = 0
+        interval = 5
+        while elapsed < wait_seconds:
+            await asyncio.sleep(interval)
+            elapsed += interval
+            emails = await _fetch_emails()
+            if emails:
+                break
+
+    otp = None
+    if emails:
+        for em in emails:
+            body = em.get("body", "")
+            if em.get("content_type") == "text/html":
+                plain = re.sub(r'<[^>]+>', ' ', body)
+            else:
+                plain = body
+            extracted = _extract_otp(plain)
+            if extracted:
+                otp = extracted
+                break
+
+    return {
+        "ok": True,
+        "email": email_addr,
+        "otp": otp,
+        "emails": [
+            {
+                "sender": e.get("sender", ""),
+                "subject": e.get("subject", ""),
+                "body": e.get("body", ""),
+                "received_at": e.get("received_at", ""),
+            }
+            for e in emails
+        ],
+    }
 
 
 @app.get("/admin/logout")
