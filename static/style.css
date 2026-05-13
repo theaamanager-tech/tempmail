@@ -388,6 +388,15 @@ body.dark {
     word-wrap: break-word;
 }
 
+.detail-body-iframe {
+    width: 100%;
+    min-height: 300px;
+    border: none;
+    background: #fff;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
 /* Scan notification */
 .scan-notification {
     position: fixed;

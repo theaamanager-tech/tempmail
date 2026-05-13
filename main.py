@@ -78,22 +78,30 @@ async def _get_gmail_access_token() -> str:
         return data["access_token"]
 
 
-def _extract_gmail_body(payload: dict) -> str:
+def _extract_gmail_body(payload: dict) -> tuple[str, str]:
+    """Return (body, content_type) preferring HTML over plain text."""
+    res: dict = {}
+    _collect_gmail_parts(payload, res)
+    if res.get("html"):
+        return res["html"], "text/html"
+    if res.get("plain"):
+        return res["plain"], "text/plain"
+    return "", "text/plain"
+
+
+def _collect_gmail_parts(payload: dict, result: dict) -> None:
     mime_type = payload.get("mimeType", "")
-    if mime_type == "text/plain":
+    if mime_type == "text/html" and not result.get("html"):
         data = payload.get("body", {}).get("data", "")
         if data:
-            return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
-    if mime_type.startswith("multipart/"):
+            result["html"] = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+    elif mime_type == "text/plain" and not result.get("plain"):
+        data = payload.get("body", {}).get("data", "")
+        if data:
+            result["plain"] = base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
+    elif mime_type.startswith("multipart/"):
         for part in payload.get("parts", []):
-            result = _extract_gmail_body(part)
-            if result:
-                return result
-    if mime_type == "text/html":
-        data = payload.get("body", {}).get("data", "")
-        if data:
-            return base64.urlsafe_b64decode(data).decode("utf-8", errors="replace")
-    return ""
+            _collect_gmail_parts(part, result)
 
 
 def _parse_gmail_message(msg_id: str, msg: dict) -> dict:
@@ -107,7 +115,7 @@ def _parse_gmail_message(msg_id: str, msg: dict) -> dict:
             subject = h["value"]
         elif name == "date":
             date_str = h["value"]
-    body = _extract_gmail_body(msg.get("payload", {}))
+    body, content_type = _extract_gmail_body(msg.get("payload", {}))
     received_at = date_str
     if date_str:
         try:
@@ -120,6 +128,7 @@ def _parse_gmail_message(msg_id: str, msg: dict) -> dict:
         "sender": sender,
         "subject": subject,
         "body": body,
+        "content_type": content_type,
         "received_at": received_at,
     }
 

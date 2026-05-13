@@ -334,6 +334,13 @@
             });
 
             const detail = document.getElementById('emailDetail');
+            const isHtml = em.content_type === 'text/html' && em.body;
+            let bodyHtml;
+            if (isHtml) {
+                bodyHtml = '<iframe class="detail-body-iframe" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>';
+            } else {
+                bodyHtml = `<div class="detail-body">${escHtml(em.body || '(Empty)')}</div>`;
+            }
             detail.innerHTML = `
                 <div class="detail-header">
                     <h2 class="detail-subject">${escHtml(em.subject || '(No Subject)')}</h2>
@@ -345,8 +352,15 @@
                         </div>
                     </div>
                 </div>
-                <div class="detail-body">${escHtml(em.body || '(Empty)')}</div>
+                ${bodyHtml}
             `;
+            if (isHtml) {
+                const iframe = detail.querySelector('.detail-body-iframe');
+                iframe.srcdoc = em.body;
+                iframe.onload = function() {
+                    iframe.style.height = iframe.contentDocument.documentElement.scrollHeight + 'px';
+                };
+            }
         }
 
         function startPolling() {
