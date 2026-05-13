@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 
 import aiosqlite
 import httpx
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, Header
+from fastapi import FastAPI, Request, Form, HTTPException, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
