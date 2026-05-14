@@ -401,10 +401,9 @@
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Import Akun Massal
                         </div>
-                        <textarea id="importData" placeholder="format: email|password (satu per baris)"></textarea>
+                        <textarea id="importData" placeholder="format: email|password|2fa (satu per baris)"></textarea>
                         <div class="import-row">
                             <input type="number" id="importDays" value="30" min="1" max="365" placeholder="Hari" title="Masa aktif (hari)">
-                            <input type="number" id="importProfiles" value="5" min="1" max="10" placeholder="Profil" title="Jumlah profil per akun" style="width:80px;">
                             <button class="btn btn-primary" onclick="bulkImport()">Simpan Akun</button>
                         </div>
                     </div>
@@ -487,7 +486,7 @@
                 <div class="tbl-wrap">
                     <table class="tbl">
                         <thead>
-                            <tr><th>Waktu</th><th>Layanan</th><th>Tipe</th><th>Pembeli</th><th>Status Garansi</th></tr>
+                            <tr><th>Waktu</th><th>Layanan</th><th>Kredensial</th><th>Tipe</th><th>Pembeli</th><th>Status Garansi</th></tr>
                         </thead>
                         <tbody id="histBody"></tbody>
                     </table>
@@ -735,7 +734,7 @@
 
                 return `<tr>
                     <td><input type="checkbox" class="row-cb" value="${acc.id}"></td>
-                    <td class="cred-cell"><strong>${acc.email}</strong><small>🔑 ${acc.password}</small></td>
+                    <td class="cred-cell" style="cursor:pointer;" onclick="copyCredential('${acc.email}','${acc.password}','${(acc.twofa || '').replace(/'/g, '\&#39;')}')" title="Klik untuk copy"><strong>${acc.email}</strong><small>🔑 ${acc.password}${acc.twofa ? ' | 🔐 ' + acc.twofa : ''}</small></td>
                     <td>
                         <button class="btn btn-outline btn-sm" onclick="showProfiles('${acc.id}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -751,6 +750,11 @@
                     </td>
                 </tr>`;
             }).join('');
+        }
+
+        function copyCredential(email, password, twofa) {
+            const text = twofa ? `${email}|${password}|${twofa}` : `${email}|${password}`;
+            navigator.clipboard.writeText(text).then(() => showToast('Kredensial disalin!')).catch(() => showToast('Gagal menyalin'));
         }
 
         function filterInventory() {
@@ -819,9 +823,8 @@
             if (!currentView) return showToast('Pilih atau buat layanan terlebih dahulu');
             const bulkData = el('importData').value.trim();
             const durasi = el('importDays').value;
-            const profileCount = el('importProfiles').value;
             if (!bulkData) return showToast('Masukkan data akun');
-            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: currentView, bulkData, durasi, profileCount, head: currentHead}) });
+            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: currentView, bulkData, durasi, profileCount: 5, head: currentHead}) });
             const data = await resp.json();
             showToast(`${data.imported} akun berhasil diimport`);
             el('importData').value = '';
@@ -944,6 +947,7 @@
                 <div class="detail-grid">
                     <div class="detail-field"><span class="detail-label">Email</span><span class="detail-value">${acc.email}</span></div>
                     <div class="detail-field"><span class="detail-label">Password</span><span class="detail-value">${acc.password}</span></div>
+                    ${acc.twofa ? `<div class="detail-field"><span class="detail-label">2FA</span><span class="detail-value">${acc.twofa}</span></div>` : ''}
                     <div class="detail-field"><span class="detail-label">Profile</span><span class="detail-value">${p.name}</span></div>
                     <div class="detail-field"><span class="detail-label">Pembeli</span><span class="detail-value">${p.user || '-'}</span></div>
                     <div class="detail-field"><span class="detail-label">PIN</span><span class="detail-value">${p.pin || '-'}</span></div>
@@ -1012,19 +1016,21 @@
                 const exp = h.expiryDate ? new Date(h.expiryDate) : null;
                 const now = new Date();
                 const days = exp ? Math.ceil((exp - now) / 86400000) : null;
+                const credText = h.twofa ? `${h.email}|${h.password}|${h.twofa}` : `${h.email}|${h.password || ''}`;
                 return `<tr>
                     <td>${h.date ? new Date(h.date).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '-'}</td>
                     <td><span class="tbl-tag tag-purple">${h.layanan.toUpperCase()}</span></td>
+                    <td class="cred-cell" style="cursor:pointer;" onclick="navigator.clipboard.writeText('${credText.replace(/'/g, "\\'")}');showToast('Disalin!')" title="Klik untuk copy"><strong>${h.email}</strong><small>🔑 ${h.password || '-'}${h.twofa ? ' | 🔐 ' + h.twofa : ''}</small></td>
                     <td>${h.tipe}</td>
                     <td>${h.pembeli}</td>
                     <td>${days !== null ? (days > 0 ? `<span class="tbl-tag tag-green">Aktif (${days}d)</span>` : `<span class="tbl-tag tag-red">Expired</span>`) : '-'}</td>
                 </tr>`;
-            }).join('') : `<tr><td colspan="5" class="tbl-empty">Belum ada transaksi terekam.</td></tr>`;
+            }).join('') : `<tr><td colspan="6" class="tbl-empty">Belum ada transaksi terekam.</td></tr>`;
         }
 
         function filterHistory() {
             const q = el('histFilter').value.toLowerCase();
-            renderHistory(historyData.filter(h => (h.layanan + h.email + h.tipe + h.pembeli + (h.date || '')).toLowerCase().includes(q)));
+            renderHistory(historyData.filter(h => (h.layanan + h.email + (h.password || '') + (h.twofa || '') + h.tipe + h.pembeli + (h.date || '')).toLowerCase().includes(q)));
         }
 
         function searchHistoryByBuyer() {
