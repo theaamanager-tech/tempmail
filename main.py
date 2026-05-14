@@ -1457,12 +1457,14 @@ async def stok_bulk_import(request: Request):
             continue
         acc_email = parts[0].strip()
         acc_pass = parts[1].strip()
+        acc_2fa = parts[2].strip() if len(parts) >= 3 else ""
         expiry = (datetime.now(timezone.utc) + timedelta(days=durasi)).isoformat()
         profiles = [{"id": i, "name": f"PROFILE {i}", "user": None, "pin": "", "avatar": ""} for i in range(1, profile_count + 1)]
         accounts.append({
             "id": str(uuid.uuid4()),
             "email": acc_email,
             "password": acc_pass,
+            "twofa": acc_2fa,
             "expiryDate": expiry,
             "isSold": False,
             "profiles": profiles,
@@ -1626,6 +1628,8 @@ async def stok_history(request: Request, head: str = ""):
                 sold.append({
                     "layanan": lay,
                     "email": acc["email"],
+                    "password": acc.get("password", ""),
+                    "twofa": acc.get("twofa", ""),
                     "tipe": "Full Account",
                     "pembeli": buyer,
                     "date": acc.get("soldDate", ""),
@@ -1635,6 +1639,8 @@ async def stok_history(request: Request, head: str = ""):
                     sold.append({
                         "layanan": lay,
                         "email": acc["email"],
+                        "password": acc.get("password", ""),
+                        "twofa": acc.get("twofa", ""),
                         "tipe": f"Slot (Profile {p['id']})",
                         "pembeli": p["user"],
                         "date": "",
