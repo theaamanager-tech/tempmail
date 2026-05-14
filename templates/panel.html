@@ -47,6 +47,21 @@
                     Settings
                 </a>
             </nav>
+            <div class="sidebar-section-label">TOOLS</div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" data-tab="password" onclick="switchTab('password')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Password Generator
+                </a>
+                <a href="#" class="nav-item" data-tab="fakeid" onclick="switchTab('fakeid')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 8h20"/><circle cx="8" cy="14" r="2"/><path d="M14 12h4M14 16h4"/></svg>
+                    Fake ID
+                </a>
+                <a href="#" class="nav-item" data-tab="notepad" onclick="switchTab('notepad')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Notepad
+                </a>
+            </nav>
             <div class="sidebar-footer">
                 <a href="/admin/logout" class="nav-item logout">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -270,6 +285,98 @@ Response: {
                 </div>
             </div>
 
+            <!-- Password Generator Tab -->
+            <div class="tab-content" id="tab-password">
+                <div class="form-card">
+                    <div class="form-group">
+                        <label>Password Length: <span id="pwLenVal">16</span></label>
+                        <input type="range" id="pwLength" min="4" max="128" value="16" oninput="document.getElementById('pwLenVal').textContent=this.value">
+                    </div>
+                    <div class="form-group">
+                        <label>Options</label>
+                        <div class="pw-options">
+                            <label class="checkbox-label"><input type="checkbox" id="pwUpper" checked> Uppercase (A-Z)</label>
+                            <label class="checkbox-label"><input type="checkbox" id="pwLower" checked> Lowercase (a-z)</label>
+                            <label class="checkbox-label"><input type="checkbox" id="pwNumbers" checked> Numbers (0-9)</label>
+                            <label class="checkbox-label"><input type="checkbox" id="pwSymbols" checked> Symbols (!@#$)</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Count</label>
+                        <input type="number" id="pwCount" value="1" min="1" max="50">
+                    </div>
+                    <button class="btn-primary" onclick="generatePasswords()">Generate Password</button>
+                </div>
+                <div id="pwResults" class="results-section hidden">
+                    <h2>Generated Passwords</h2>
+                    <div id="pwResultsList" class="results-list"></div>
+                </div>
+            </div>
+
+            <!-- Fake ID Tab -->
+            <div class="tab-content" id="tab-fakeid">
+                <div class="form-card">
+                    <div class="form-group">
+                        <label>Country</label>
+                        <select id="fakeCountry">
+                            <option value="ID">Indonesia</option>
+                            <option value="US">United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="JP">Japan</option>
+                            <option value="KR">South Korea</option>
+                            <option value="DE">Germany</option>
+                            <option value="FR">France</option>
+                            <option value="BR">Brazil</option>
+                            <option value="IN">India</option>
+                            <option value="AU">Australia</option>
+                            <option value="CA">Canada</option>
+                            <option value="MX">Mexico</option>
+                            <option value="TH">Thailand</option>
+                            <option value="VN">Vietnam</option>
+                            <option value="PH">Philippines</option>
+                            <option value="MY">Malaysia</option>
+                            <option value="SG">Singapore</option>
+                            <option value="SA">Saudi Arabia</option>
+                            <option value="AE">UAE</option>
+                            <option value="TR">Turkey</option>
+                            <option value="RU">Russia</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="generateFakeId()">Generate Fake ID</button>
+                </div>
+                <div id="fakeIdResult" class="results-section hidden">
+                    <h2>Generated Identity</h2>
+                    <div id="fakeIdCard" class="fake-id-card"></div>
+                    <button class="btn-primary" style="margin-top:12px;" onclick="copyFakeId()">Copy All Data</button>
+                </div>
+            </div>
+
+            <!-- Notepad Tab -->
+            <div class="tab-content" id="tab-notepad">
+                <div class="notepad-toolbar">
+                    <div class="notepad-toolbar-left">
+                        <select id="noteSelect" onchange="loadNote(this.value)">
+                            <option value="__new__">+ New Note</option>
+                        </select>
+                        <input type="text" id="noteTitle" placeholder="Note title..." class="note-title-input">
+                    </div>
+                    <div class="notepad-toolbar-right">
+                        <button class="btn-sm btn-copy" onclick="saveNote()">Save</button>
+                        <button class="btn-sm btn-scan-link" onclick="downloadNote()">Download .txt</button>
+                        <button class="btn-sm btn-danger" onclick="deleteNote()">Delete</button>
+                    </div>
+                </div>
+                <div class="notepad-container">
+                    <textarea id="noteContent" class="notepad-editor" placeholder="Start typing your note here..."></textarea>
+                    <div class="notepad-statusbar">
+                        <span id="noteCharCount">0 characters</span>
+                        <span id="noteWordCount">0 words</span>
+                        <span id="noteLineCount">1 line</span>
+                        <span id="noteAutoSave" class="note-autosave"></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Settings Tab -->
             <div class="tab-content" id="tab-settings">
                 <div class="form-card">
@@ -301,7 +408,10 @@ Response: {
             accounts: 'Email Accounts',
             domains: 'Domains',
             apikeys: 'API Keys',
-            settings: 'Settings'
+            settings: 'Settings',
+            password: 'Password Generator',
+            fakeid: 'Fake ID Generator',
+            notepad: 'Notepad'
         };
 
         const mainTabs = ['generate', 'manual', 'accounts'];
@@ -647,6 +757,427 @@ Response: {
 
         // Load API keys on page load
         refreshApiKeys();
+
+        // ─── Password Generator ───────────────────────────────────
+        function generatePasswords() {
+            const len = parseInt(document.getElementById('pwLength').value);
+            const count = parseInt(document.getElementById('pwCount').value) || 1;
+            const upper = document.getElementById('pwUpper').checked;
+            const lower = document.getElementById('pwLower').checked;
+            const nums = document.getElementById('pwNumbers').checked;
+            const syms = document.getElementById('pwSymbols').checked;
+
+            let chars = '';
+            if (upper) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if (lower) chars += 'abcdefghijklmnopqrstuvwxyz';
+            if (nums) chars += '0123456789';
+            if (syms) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+            if (!chars) { showToast('Select at least one option', true); return; }
+
+            const container = document.getElementById('pwResultsList');
+            container.innerHTML = '';
+            for (let i = 0; i < Math.min(count, 50); i++) {
+                const arr = new Uint32Array(len);
+                crypto.getRandomValues(arr);
+                let pw = '';
+                for (let j = 0; j < len; j++) pw += chars[arr[j] % chars.length];
+
+                const strength = calcStrength(pw);
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <div class="result-info" style="flex:1;min-width:0;">
+                        <code class="pw-display">${escapeHtml(pw)}</code>
+                        <div class="pw-strength">
+                            <div class="pw-strength-bar" style="width:${strength.pct}%;background:${strength.color};"></div>
+                        </div>
+                        <span style="font-size:11px;color:${strength.color};">${strength.label}</span>
+                    </div>
+                    <div class="result-actions">
+                        <button class="btn-sm btn-copy" onclick="navigator.clipboard.writeText('${escapeAttr(pw)}').then(()=>showToast('Password copied!'))">Copy</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            }
+            document.getElementById('pwResults').classList.remove('hidden');
+            showToast(`${Math.min(count, 50)} password(s) generated`);
+        }
+
+        function calcStrength(pw) {
+            let score = 0;
+            if (pw.length >= 8) score++;
+            if (pw.length >= 12) score++;
+            if (pw.length >= 20) score++;
+            if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+            if (/\d/.test(pw)) score++;
+            if (/[^a-zA-Z0-9]/.test(pw)) score++;
+            if (pw.length >= 32) score++;
+            const levels = [
+                { pct: 15, color: '#f85149', label: 'Very Weak' },
+                { pct: 30, color: '#f85149', label: 'Weak' },
+                { pct: 50, color: '#d29922', label: 'Fair' },
+                { pct: 70, color: '#d29922', label: 'Good' },
+                { pct: 85, color: '#3fb950', label: 'Strong' },
+                { pct: 95, color: '#3fb950', label: 'Very Strong' },
+                { pct: 100, color: '#58a6ff', label: 'Excellent' },
+            ];
+            return levels[Math.min(score, levels.length - 1)];
+        }
+
+        function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function escapeAttr(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+        // ─── Fake ID Generator ────────────────────────────────────
+        const fakeData = {
+            ID: {
+                country: 'Indonesia', phone: '+62', 
+                first: ['Andi','Budi','Citra','Dewi','Eko','Fitri','Gunawan','Hadi','Indah','Joko','Kartini','Lestari','Mulyono','Nur','Putri','Rizky','Sari','Taufik','Wati','Yusuf','Agus','Bayu','Dian','Fajar','Gilang','Hana','Irfan','Jasmine','Karina','Lina'],
+                last: ['Wijaya','Susanto','Pratama','Sari','Hidayat','Kurniawan','Setiawan','Wibowo','Suryadi','Permana','Hartono','Firmansyah','Nugroho','Santoso','Rahman','Putra','Saputra','Handoko','Purnama','Utomo'],
+                streets: ['Jl. Sudirman No.','Jl. Thamrin No.','Jl. Gatot Subroto No.','Jl. Rasuna Said No.','Jl. Merdeka No.','Jl. Ahmad Yani No.','Jl. Diponegoro No.','Jl. Imam Bonjol No.','Jl. Hayam Wuruk No.','Jl. Gajah Mada No.'],
+                cities: [{city:'Jakarta Selatan',state:'DKI Jakarta',zip:'12'},{city:'Surabaya',state:'Jawa Timur',zip:'60'},{city:'Bandung',state:'Jawa Barat',zip:'40'},{city:'Medan',state:'Sumatera Utara',zip:'20'},{city:'Semarang',state:'Jawa Tengah',zip:'50'},{city:'Makassar',state:'Sulawesi Selatan',zip:'90'},{city:'Palembang',state:'Sumatera Selatan',zip:'30'},{city:'Denpasar',state:'Bali',zip:'80'},{city:'Yogyakarta',state:'DI Yogyakarta',zip:'55'},{city:'Malang',state:'Jawa Timur',zip:'65'}],
+                phoneFmt: () => '8' + rDigits(2) + '-' + rDigits(4) + '-' + rDigits(4)
+            },
+            US: {
+                country: 'United States', phone: '+1',
+                first: ['James','Mary','Robert','Patricia','John','Jennifer','Michael','Linda','David','Elizabeth','William','Barbara','Richard','Susan','Joseph','Jessica','Thomas','Sarah','Christopher','Karen','Daniel','Emily','Matthew','Ashley','Andrew','Megan','Joshua','Samantha','Brandon','Nicole'],
+                last: ['Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez','Wilson','Anderson','Thomas','Taylor','Moore','Jackson','Martin'],
+                streets: ['123 Oak Street','456 Maple Avenue','789 Pine Road','1024 Broadway','2048 Elm Drive','55 Washington Blvd','310 Lincoln Ave','742 Evergreen Terrace','1600 Pennsylvania Ave','900 Market Street'],
+                cities: [{city:'Los Angeles',state:'California',zip:'900'},{city:'New York',state:'New York',zip:'100'},{city:'Chicago',state:'Illinois',zip:'606'},{city:'Houston',state:'Texas',zip:'770'},{city:'Phoenix',state:'Arizona',zip:'850'},{city:'Philadelphia',state:'Pennsylvania',zip:'191'},{city:'San Antonio',state:'Texas',zip:'782'},{city:'San Diego',state:'California',zip:'921'},{city:'Dallas',state:'Texas',zip:'752'},{city:'Austin',state:'Texas',zip:'787'}],
+                phoneFmt: () => '(' + rDigits(3) + ') ' + rDigits(3) + '-' + rDigits(4)
+            },
+            GB: {
+                country: 'United Kingdom', phone: '+44',
+                first: ['Oliver','Amelia','George','Isla','Harry','Ava','Jack','Emily','Leo','Mia','Charlie','Sophie','Oscar','Olivia','Thomas','Grace','William','Lily','Henry','Freya','Arthur','Poppy','Noah','Ella','James','Chloe','Edward','Ruby','Samuel','Florence'],
+                last: ['Smith','Jones','Williams','Taylor','Brown','Davies','Evans','Wilson','Thomas','Roberts','Johnson','Lewis','Walker','Robinson','Wood','Thompson','White','Watson','Jackson','Wright'],
+                streets: ['10 Baker Street','22 King\'s Road','45 High Street','8 Victoria Lane','33 Church Road','17 Oxford Street','52 Regent Street','71 Park Lane','29 Abbey Road','64 Kensington Road'],
+                cities: [{city:'London',state:'England',zip:'SW1A'},{city:'Manchester',state:'England',zip:'M1'},{city:'Birmingham',state:'England',zip:'B1'},{city:'Leeds',state:'England',zip:'LS1'},{city:'Glasgow',state:'Scotland',zip:'G1'},{city:'Liverpool',state:'England',zip:'L1'},{city:'Edinburgh',state:'Scotland',zip:'EH1'},{city:'Bristol',state:'England',zip:'BS1'},{city:'Cardiff',state:'Wales',zip:'CF10'},{city:'Belfast',state:'Northern Ireland',zip:'BT1'}],
+                phoneFmt: () => '7' + rDigits(3) + ' ' + rDigits(3) + ' ' + rDigits(3)
+            },
+            JP: {
+                country: 'Japan', phone: '+81',
+                first: ['Haruto','Yui','Sota','Hina','Riku','Mei','Yuto','Aoi','Haruki','Sakura','Ren','Himari','Minato','Koharu','Kaito','Akari','Asahi','Rio','Yusei','Yuna','Hinata','Mio','Itsuki','Riko','Sora','Hana','Hayato','Yuzuki','Takumi','Saki'],
+                last: ['Sato','Suzuki','Takahashi','Tanaka','Watanabe','Ito','Yamamoto','Nakamura','Kobayashi','Kato','Yoshida','Yamada','Sasaki','Yamaguchi','Saito','Matsumoto','Inoue','Kimura','Shimizu','Hayashi'],
+                streets: ['1-2-3 Shibuya','4-5-6 Shinjuku','7-8-9 Minato','2-3-1 Chiyoda','5-6-2 Setagaya','3-1-4 Meguro','8-2-5 Toshima','6-4-3 Bunkyo','1-7-2 Sumida','9-3-1 Shinagawa'],
+                cities: [{city:'Tokyo',state:'Tokyo-to',zip:'100'},{city:'Osaka',state:'Osaka-fu',zip:'530'},{city:'Yokohama',state:'Kanagawa-ken',zip:'220'},{city:'Nagoya',state:'Aichi-ken',zip:'450'},{city:'Sapporo',state:'Hokkaido',zip:'060'},{city:'Fukuoka',state:'Fukuoka-ken',zip:'810'},{city:'Kobe',state:'Hyogo-ken',zip:'650'},{city:'Kyoto',state:'Kyoto-fu',zip:'600'},{city:'Sendai',state:'Miyagi-ken',zip:'980'},{city:'Hiroshima',state:'Hiroshima-ken',zip:'730'}],
+                phoneFmt: () => '90-' + rDigits(4) + '-' + rDigits(4)
+            },
+            KR: {
+                country: 'South Korea', phone: '+82',
+                first: ['Minjun','Seo-yeon','Seojun','Ha-yoon','Dohyun','Seo-yun','Yejun','Ji-yu','Siwoo','Ha-rin','Juwon','Ji-woo','Jiho','Chae-won','Junwoo','Su-ah','Jimin','Ye-rin','Seonu','Yoon-seo','Hyunwoo','Ye-na','Jihu','Ji-ah','Eunwoo','Na-yeon','Gunwoo','Ha-eun','Taewoo','So-yeon'],
+                last: ['Kim','Lee','Park','Choi','Jung','Kang','Cho','Yoon','Jang','Lim','Han','Oh','Seo','Shin','Kwon','Hwang','Ahn','Song','Yu','Hong'],
+                streets: ['23 Gangnam-daero','45 Teheran-ro','12 Sejong-daero','67 Eulji-ro','89 Jong-ro','34 Yeongdong-daero','56 Hangang-daero','78 Samseong-ro','90 Apgujeong-ro','11 Dosan-daero'],
+                cities: [{city:'Seoul',state:'Seoul',zip:'06'},{city:'Busan',state:'Busan',zip:'48'},{city:'Incheon',state:'Incheon',zip:'22'},{city:'Daegu',state:'Daegu',zip:'42'},{city:'Daejeon',state:'Daejeon',zip:'35'},{city:'Gwangju',state:'Gwangju',zip:'62'},{city:'Suwon',state:'Gyeonggi-do',zip:'16'},{city:'Ulsan',state:'Ulsan',zip:'44'},{city:'Seongnam',state:'Gyeonggi-do',zip:'13'},{city:'Goyang',state:'Gyeonggi-do',zip:'10'}],
+                phoneFmt: () => '10-' + rDigits(4) + '-' + rDigits(4)
+            },
+            DE: {
+                country: 'Germany', phone: '+49',
+                first: ['Noah','Emma','Leon','Mia','Finn','Hannah','Elias','Sophia','Paul','Emilia','Ben','Marie','Luis','Lina','Felix','Ella','Lukas','Lea','Maximilian','Anna','Jonas','Lena','Tim','Laura','Niklas','Clara','Moritz','Julia','Jan','Amelie'],
+                last: ['Muller','Schmidt','Schneider','Fischer','Weber','Meyer','Wagner','Becker','Schulz','Hoffmann','Koch','Richter','Wolf','Schroeder','Neumann','Schwarz','Braun','Zimmermann','Kruger','Hartmann'],
+                streets: ['Hauptstrasse 12','Berliner Strasse 45','Friedrichstrasse 78','Schillerstrasse 23','Goethestrasse 56','Bahnhofstrasse 34','Gartenstrasse 67','Mozartstrasse 89','Kirchstrasse 11','Schulstrasse 43'],
+                cities: [{city:'Berlin',state:'Berlin',zip:'10'},{city:'Hamburg',state:'Hamburg',zip:'20'},{city:'Munich',state:'Bavaria',zip:'80'},{city:'Cologne',state:'North Rhine-Westphalia',zip:'50'},{city:'Frankfurt',state:'Hesse',zip:'60'},{city:'Stuttgart',state:'Baden-Wurttemberg',zip:'70'},{city:'Dusseldorf',state:'North Rhine-Westphalia',zip:'40'},{city:'Leipzig',state:'Saxony',zip:'04'},{city:'Dortmund',state:'North Rhine-Westphalia',zip:'44'},{city:'Dresden',state:'Saxony',zip:'01'}],
+                phoneFmt: () => '15' + rDigits(1) + ' ' + rDigits(4) + rDigits(4)
+            },
+            FR: {
+                country: 'France', phone: '+33',
+                first: ['Gabriel','Emma','Raphael','Jade','Leo','Louise','Louis','Alice','Adam','Ambre','Lucas','Lina','Hugo','Rose','Arthur','Chloe','Jules','Lea','Liam','Mila','Ethan','Anna','Nathan','Juliette','Tom','Lou','Noah','Zoe','Theo','Manon'],
+                last: ['Martin','Bernard','Dubois','Thomas','Robert','Richard','Petit','Durand','Leroy','Moreau','Simon','Laurent','Lefebvre','Michel','Garcia','David','Bertrand','Roux','Vincent','Fournier'],
+                streets: ['12 Rue de Rivoli','45 Avenue des Champs-Elysees','78 Boulevard Saint-Germain','23 Rue du Faubourg Saint-Honore','56 Avenue Montaigne','34 Rue de la Paix','67 Boulevard Haussmann','89 Rue de Vaugirard','11 Avenue Victor Hugo','43 Rue Saint-Dominique'],
+                cities: [{city:'Paris',state:'Ile-de-France',zip:'75'},{city:'Marseille',state:'Provence-Alpes-Cote d\'Azur',zip:'13'},{city:'Lyon',state:'Auvergne-Rhone-Alpes',zip:'69'},{city:'Toulouse',state:'Occitanie',zip:'31'},{city:'Nice',state:'Provence-Alpes-Cote d\'Azur',zip:'06'},{city:'Nantes',state:'Pays de la Loire',zip:'44'},{city:'Strasbourg',state:'Grand Est',zip:'67'},{city:'Montpellier',state:'Occitanie',zip:'34'},{city:'Bordeaux',state:'Nouvelle-Aquitaine',zip:'33'},{city:'Lille',state:'Hauts-de-France',zip:'59'}],
+                phoneFmt: () => '6 ' + rDigits(2) + ' ' + rDigits(2) + ' ' + rDigits(2) + ' ' + rDigits(2)
+            },
+            BR: {
+                country: 'Brazil', phone: '+55',
+                first: ['Miguel','Alice','Arthur','Sophia','Heitor','Helena','Bernardo','Valentina','Theo','Laura','Davi','Isabella','Gabriel','Manuela','Pedro','Julia','Lorenzo','Heloisa','Samuel','Luisa','Lucas','Maria','Enzo','Cecilia','Rafael','Eloah','Gustavo','Lara','Nicolas','Beatriz'],
+                last: ['Silva','Santos','Oliveira','Souza','Rodrigues','Ferreira','Alves','Pereira','Lima','Gomes','Costa','Ribeiro','Martins','Carvalho','Araujo','Melo','Barbosa','Nascimento','Nunes','Moreira'],
+                streets: ['Rua Augusta 234','Av. Paulista 1578','Rua Oscar Freire 890','Av. Brasil 456','Rua das Flores 123','Av. Atlantica 3200','Rua Copacabana 567','Av. Ipanema 890','Rua Liberdade 345','Av. Rio Branco 678'],
+                cities: [{city:'Sao Paulo',state:'SP',zip:'01'},{city:'Rio de Janeiro',state:'RJ',zip:'20'},{city:'Brasilia',state:'DF',zip:'70'},{city:'Salvador',state:'BA',zip:'40'},{city:'Fortaleza',state:'CE',zip:'60'},{city:'Belo Horizonte',state:'MG',zip:'30'},{city:'Curitiba',state:'PR',zip:'80'},{city:'Recife',state:'PE',zip:'50'},{city:'Porto Alegre',state:'RS',zip:'90'},{city:'Manaus',state:'AM',zip:'69'}],
+                phoneFmt: () => '(' + rDigits(2) + ') 9' + rDigits(4) + '-' + rDigits(4)
+            },
+            IN: {
+                country: 'India', phone: '+91',
+                first: ['Aarav','Saanvi','Vivaan','Aanya','Aditya','Aadhya','Vihaan','Ananya','Arjun','Diya','Reyansh','Myra','Sai','Ira','Atharv','Pari','Ayaan','Anika','Krishna','Kiara','Ishaan','Riya','Shaurya','Prisha','Advik','Kavya','Dhruv','Zara','Kabir','Avni'],
+                last: ['Sharma','Patel','Singh','Kumar','Gupta','Reddy','Joshi','Shah','Mehta','Verma','Malhotra','Iyer','Desai','Nair','Rao','Mukherjee','Chopra','Bhat','Pillai','Agarwal'],
+                streets: ['42 MG Road','18 Brigade Road','56 Park Street','23 Connaught Place','78 Linking Road','34 Anna Salai','67 FC Road','89 Marine Drive','12 Residency Road','45 Banjara Hills'],
+                cities: [{city:'Mumbai',state:'Maharashtra',zip:'400'},{city:'Delhi',state:'Delhi',zip:'110'},{city:'Bangalore',state:'Karnataka',zip:'560'},{city:'Hyderabad',state:'Telangana',zip:'500'},{city:'Chennai',state:'Tamil Nadu',zip:'600'},{city:'Kolkata',state:'West Bengal',zip:'700'},{city:'Pune',state:'Maharashtra',zip:'411'},{city:'Ahmedabad',state:'Gujarat',zip:'380'},{city:'Jaipur',state:'Rajasthan',zip:'302'},{city:'Lucknow',state:'Uttar Pradesh',zip:'226'}],
+                phoneFmt: () => rDigits(5) + ' ' + rDigits(5)
+            },
+            AU: {
+                country: 'Australia', phone: '+61',
+                first: ['Oliver','Charlotte','Noah','Amelia','Jack','Olivia','William','Isla','Leo','Mia','Henry','Ava','Charlie','Grace','Thomas','Chloe','James','Ella','Lucas','Harper','Liam','Sophie','Ethan','Lily','Alexander','Zoe','Oscar','Ruby','Archie','Willow'],
+                last: ['Smith','Jones','Williams','Brown','Wilson','Taylor','Johnson','White','Martin','Anderson','Thompson','Nguyen','Thomas','Walker','Harris','Lee','Ryan','Robinson','Kelly','King'],
+                streets: ['12 George Street','45 Pitt Street','78 Collins Street','23 Bourke Street','56 Flinders Lane','34 Elizabeth Street','67 Swanston Street','89 King Street','11 Queen Street','43 Bridge Road'],
+                cities: [{city:'Sydney',state:'New South Wales',zip:'2000'},{city:'Melbourne',state:'Victoria',zip:'3000'},{city:'Brisbane',state:'Queensland',zip:'4000'},{city:'Perth',state:'Western Australia',zip:'6000'},{city:'Adelaide',state:'South Australia',zip:'5000'},{city:'Gold Coast',state:'Queensland',zip:'4217'},{city:'Canberra',state:'ACT',zip:'2600'},{city:'Hobart',state:'Tasmania',zip:'7000'},{city:'Darwin',state:'Northern Territory',zip:'0800'},{city:'Newcastle',state:'New South Wales',zip:'2300'}],
+                phoneFmt: () => '4' + rDigits(2) + ' ' + rDigits(3) + ' ' + rDigits(3)
+            },
+            CA: {
+                country: 'Canada', phone: '+1',
+                first: ['Liam','Olivia','Noah','Emma','Jack','Charlotte','William','Amelia','James','Sophia','Oliver','Ava','Benjamin','Mia','Lucas','Isabella','Henry','Ella','Leo','Chloe','Ethan','Lily','Alexander','Grace','Theodore','Zoe','Owen','Emily','Daniel','Aria'],
+                last: ['Smith','Brown','Tremblay','Martin','Roy','Wilson','Macdonald','Taylor','Campbell','Anderson','Jones','Leblanc','Johnson','Lee','Williams','White','Thompson','Gagnon','Cote','Davis'],
+                streets: ['123 Yonge Street','456 Bloor Street','789 Robson Street','1024 Jasper Avenue','55 Sainte-Catherine Street','310 Portage Avenue','742 Bank Street','900 Granville Street','250 King Street','180 Elgin Street'],
+                cities: [{city:'Toronto',state:'Ontario',zip:'M5V'},{city:'Montreal',state:'Quebec',zip:'H2X'},{city:'Vancouver',state:'British Columbia',zip:'V6B'},{city:'Calgary',state:'Alberta',zip:'T2P'},{city:'Edmonton',state:'Alberta',zip:'T5J'},{city:'Ottawa',state:'Ontario',zip:'K1P'},{city:'Winnipeg',state:'Manitoba',zip:'R3C'},{city:'Quebec City',state:'Quebec',zip:'G1R'},{city:'Hamilton',state:'Ontario',zip:'L8P'},{city:'Halifax',state:'Nova Scotia',zip:'B3H'}],
+                phoneFmt: () => '(' + rDigits(3) + ') ' + rDigits(3) + '-' + rDigits(4)
+            },
+            MX: {
+                country: 'Mexico', phone: '+52',
+                first: ['Santiago','Valentina','Mateo','Sofia','Sebastian','Regina','Leonardo','Renata','Emiliano','Maria','Diego','Ximena','Miguel','Camila','Daniel','Isabella','Alejandro','Fernanda','Pablo','Natalia','Carlos','Ana','Juan','Lucia','Fernando','Paula','Andres','Mariana','Jose','Daniela'],
+                last: ['Garcia','Rodriguez','Martinez','Lopez','Hernandez','Gonzalez','Perez','Sanchez','Ramirez','Torres','Flores','Rivera','Gomez','Diaz','Cruz','Morales','Reyes','Gutierrez','Ortiz','Mendoza'],
+                streets: ['Av. Reforma 234','Calle Madero 567','Av. Insurgentes 890','Calle Hidalgo 123','Av. Juarez 456','Calle Morelos 789','Av. Chapultepec 345','Calle 5 de Mayo 678','Av. Universidad 901','Calle Independencia 234'],
+                cities: [{city:'Mexico City',state:'CDMX',zip:'06'},{city:'Guadalajara',state:'Jalisco',zip:'44'},{city:'Monterrey',state:'Nuevo Leon',zip:'64'},{city:'Puebla',state:'Puebla',zip:'72'},{city:'Cancun',state:'Quintana Roo',zip:'77'},{city:'Merida',state:'Yucatan',zip:'97'},{city:'Tijuana',state:'Baja California',zip:'22'},{city:'Leon',state:'Guanajuato',zip:'37'},{city:'Queretaro',state:'Queretaro',zip:'76'},{city:'Oaxaca',state:'Oaxaca',zip:'68'}],
+                phoneFmt: () => rDigits(2) + ' ' + rDigits(4) + ' ' + rDigits(4)
+            },
+            TH: {
+                country: 'Thailand', phone: '+66',
+                first: ['Somchai','Siriporn','Somsak','Siriwan','Sakchai','Nattaya','Prasert','Waraporn','Tanakorn','Supaporn','Wichai','Ratchanee','Prayuth','Jintana','Kritsada','Ploy','Nattapong','Ornicha','Anuwat','Kannika','Thanawat','Nicha','Pongsakorn','Chayanit','Worawit','Pitchaya','Nattawut','Araya','Kittipat','Pimchanok'],
+                last: ['Saetang','Chaiyasit','Wongsawat','Siripong','Thongkam','Srisawat','Rattanakorn','Phetcharat','Kittisak','Prasitthiporn','Wongprasert','Jantarasiri','Bunyarit','Somboon','Kittirat','Mahidol','Phongsak','Anantawat','Charoenrat','Yingyong'],
+                streets: ['123 Sukhumvit Road','456 Silom Road','789 Ratchadaphisek Road','234 Phaholyothin Road','567 Rama IV Road','890 Charoen Krung Road','345 Sathorn Road','678 Wireless Road','901 Phetchaburi Road','123 Lat Phrao Road'],
+                cities: [{city:'Bangkok',state:'Bangkok',zip:'10'},{city:'Chiang Mai',state:'Chiang Mai',zip:'50'},{city:'Phuket',state:'Phuket',zip:'83'},{city:'Pattaya',state:'Chonburi',zip:'20'},{city:'Khon Kaen',state:'Khon Kaen',zip:'40'},{city:'Hat Yai',state:'Songkhla',zip:'90'},{city:'Nakhon Ratchasima',state:'Nakhon Ratchasima',zip:'30'},{city:'Udon Thani',state:'Udon Thani',zip:'41'},{city:'Chiang Rai',state:'Chiang Rai',zip:'57'},{city:'Surat Thani',state:'Surat Thani',zip:'84'}],
+                phoneFmt: () => rDigits(2) + '-' + rDigits(3) + '-' + rDigits(4)
+            },
+            VN: {
+                country: 'Vietnam', phone: '+84',
+                first: ['Minh','Linh','Duc','Mai','Huy','Trang','Khoi','Ngoc','Bao','Thao','An','Phuong','Long','Huong','Nam','Anh','Duy','Hanh','Quang','Lan','Tuan','Hoa','Phuc','Van','Hung','Thi','Thanh','Nhu','Khanh','Quynh'],
+                last: ['Nguyen','Tran','Le','Pham','Hoang','Huynh','Phan','Vu','Vo','Dang','Bui','Do','Ho','Ngo','Duong','Ly','Truong','Lam','Dinh','Mai'],
+                streets: ['12 Nguyen Hue','45 Le Loi','78 Dong Khoi','23 Tran Hung Dao','56 Hai Ba Trung','34 Vo Van Tan','67 Nam Ky Khoi Nghia','89 Nguyen Trai','11 Le Duan','43 Pasteur'],
+                cities: [{city:'Ho Chi Minh City',state:'Ho Chi Minh',zip:'70'},{city:'Hanoi',state:'Hanoi',zip:'10'},{city:'Da Nang',state:'Da Nang',zip:'50'},{city:'Hai Phong',state:'Hai Phong',zip:'04'},{city:'Can Tho',state:'Can Tho',zip:'90'},{city:'Nha Trang',state:'Khanh Hoa',zip:'65'},{city:'Hue',state:'Thua Thien Hue',zip:'49'},{city:'Vung Tau',state:'Ba Ria-Vung Tau',zip:'78'},{city:'Da Lat',state:'Lam Dong',zip:'66'},{city:'Quy Nhon',state:'Binh Dinh',zip:'55'}],
+                phoneFmt: () => rDigits(2) + ' ' + rDigits(3) + ' ' + rDigits(2) + ' ' + rDigits(2)
+            },
+            PH: {
+                country: 'Philippines', phone: '+63',
+                first: ['Juan','Maria','Jose','Ana','Miguel','Sofia','Carlos','Isabella','Andres','Gabriela','Marco','Camille','Rafael','Nicole','Antonio','Angela','Gabriel','Patricia','Lorenzo','Katherine','Diego','Jasmine','Enrique','Samantha','Luis','Bianca','Alejandro','Trisha','Felix','Alyssa'],
+                last: ['Santos','Reyes','Cruz','Bautista','Ocampo','Garcia','Mendoza','Torres','Tomas','Andrada','Ramos','Aquino','Dela Cruz','Rivera','Lopez','Villanueva','Gonzales','Hernandez','Fernandez','Soriano'],
+                streets: ['123 Rizal Avenue','456 EDSA','789 Ayala Avenue','234 Roxas Boulevard','567 Quezon Avenue','890 Taft Avenue','345 Shaw Boulevard','678 Ortigas Avenue','901 Macapagal Boulevard','123 Bonifacio Avenue'],
+                cities: [{city:'Manila',state:'Metro Manila',zip:'10'},{city:'Quezon City',state:'Metro Manila',zip:'11'},{city:'Cebu City',state:'Cebu',zip:'60'},{city:'Davao City',state:'Davao del Sur',zip:'80'},{city:'Makati',state:'Metro Manila',zip:'12'},{city:'Pasig',state:'Metro Manila',zip:'16'},{city:'Taguig',state:'Metro Manila',zip:'16'},{city:'Iloilo City',state:'Iloilo',zip:'50'},{city:'Baguio',state:'Benguet',zip:'26'},{city:'Cagayan de Oro',state:'Misamis Oriental',zip:'90'}],
+                phoneFmt: () => '9' + rDigits(2) + ' ' + rDigits(3) + ' ' + rDigits(4)
+            },
+            MY: {
+                country: 'Malaysia', phone: '+60',
+                first: ['Ahmad','Siti','Muhammad','Nur','Mohd','Aisyah','Amir','Fatimah','Hafiz','Nurul','Irfan','Syafiqah','Farhan','Amira','Danish','Nabila','Arif','Izzah','Hakim','Nadia','Rizal','Liyana','Faris','Anis','Fikri','Hana','Zulkifli','Sarah','Azman','Maryam'],
+                last: ['Abdullah','Ibrahim','Hassan','Ismail','Ali','Rahman','Ahmad','Othman','Yusof','Omar','Mohd','Zainal','Mohamed','Sulaiman','Lim','Tan','Lee','Wong','Ng','Chan'],
+                streets: ['12 Jalan Bukit Bintang','45 Jalan Sultan Ismail','78 Jalan Ampang','23 Jalan Tun Razak','56 Jalan Imbi','34 Jalan Raja Chulan','67 Jalan P. Ramlee','89 Jalan Masjid India','11 Jalan Tuanku Abdul Rahman','43 Jalan Petaling'],
+                cities: [{city:'Kuala Lumpur',state:'WP Kuala Lumpur',zip:'50'},{city:'George Town',state:'Penang',zip:'10'},{city:'Johor Bahru',state:'Johor',zip:'80'},{city:'Ipoh',state:'Perak',zip:'30'},{city:'Shah Alam',state:'Selangor',zip:'40'},{city:'Malacca City',state:'Malacca',zip:'75'},{city:'Kota Kinabalu',state:'Sabah',zip:'88'},{city:'Kuching',state:'Sarawak',zip:'93'},{city:'Petaling Jaya',state:'Selangor',zip:'46'},{city:'Subang Jaya',state:'Selangor',zip:'47'}],
+                phoneFmt: () => '1' + rDigits(1) + '-' + rDigits(4) + ' ' + rDigits(4)
+            },
+            SG: {
+                country: 'Singapore', phone: '+65',
+                first: ['Wei','Hui','Jun','Xin','Jia','Yu','Zhi','Ling','Ming','Fang','Kai','Mei','Hao','Yan','Yi','Wen','Shu','Li','Cheng','Qian','Ryan','Sarah','Ethan','Rachel','Aiden','Nicole','Jayden','Chloe','Lucas','Emma'],
+                last: ['Tan','Lim','Lee','Ng','Ong','Wong','Goh','Chua','Chan','Koh','Teo','Ang','Yeo','Sim','Ho','Low','Tay','Foo','Lai','Chong'],
+                streets: ['12 Orchard Road','45 Raffles Place','78 Marina Bay','23 Sentosa Gateway','56 Bukit Timah Road','34 Shenton Way','67 Cecil Street','89 Robinson Road','11 Tanjong Pagar Road','43 Telok Ayer Street'],
+                cities: [{city:'Singapore',state:'Central Region',zip:'01'},{city:'Singapore',state:'East Region',zip:'46'},{city:'Singapore',state:'West Region',zip:'60'},{city:'Singapore',state:'North Region',zip:'72'},{city:'Singapore',state:'North-East Region',zip:'53'}],
+                phoneFmt: () => rDigits(4) + ' ' + rDigits(4)
+            },
+            SA: {
+                country: 'Saudi Arabia', phone: '+966',
+                first: ['Mohammed','Fatimah','Abdullah','Nora','Ahmed','Sarah','Khalid','Lama','Omar','Nouf','Ali','Reema','Faisal','Haya','Sultan','Maha','Saud','Alanoud','Turki','Dalal','Abdulrahman','Asma','Fahad','Haifa','Bandar','Reem','Nasser','Ghada','Salman','Jawaher'],
+                last: ['Al-Saud','Al-Rashid','Al-Qahtani','Al-Ghamdi','Al-Shahrani','Al-Dossari','Al-Harbi','Al-Otaibi','Al-Zahrani','Al-Shehri','Al-Mutairi','Al-Subai','Al-Malki','Al-Anazi','Al-Shamrani','Al-Yami','Al-Tamimi','Al-Juhani','Al-Ahmadi','Al-Turki'],
+                streets: ['King Fahd Road 12','Olaya Street 45','Tahlia Street 78','Prince Sultan Road 23','King Abdullah Road 56','Al Madinah Road 34','Palestine Street 67','Sitteen Street 89','Al Batha Street 11','Makkah Road 43'],
+                cities: [{city:'Riyadh',state:'Riyadh Province',zip:'11'},{city:'Jeddah',state:'Makkah Province',zip:'21'},{city:'Mecca',state:'Makkah Province',zip:'24'},{city:'Medina',state:'Medina Province',zip:'42'},{city:'Dammam',state:'Eastern Province',zip:'31'},{city:'Khobar',state:'Eastern Province',zip:'34'},{city:'Tabuk',state:'Tabuk Province',zip:'47'},{city:'Abha',state:'Asir Province',zip:'61'},{city:'Buraidah',state:'Qassim Province',zip:'51'},{city:'Hail',state:'Hail Province',zip:'55'}],
+                phoneFmt: () => '5' + rDigits(1) + ' ' + rDigits(3) + ' ' + rDigits(4)
+            },
+            AE: {
+                country: 'United Arab Emirates', phone: '+971',
+                first: ['Mohammed','Fatima','Ahmed','Mariam','Rashid','Aisha','Khalifa','Noura','Sultan','Hessa','Omar','Shamma','Ali','Maha','Saeed','Latifa','Hamdan','Mouza','Abdullah','Salama','Mansoor','Reem','Faisal','Khawla','Zayed','Amna','Majid','Sheikha','Theyab','Alya'],
+                last: ['Al-Maktoum','Al-Nahyan','Al-Nuaimi','Al-Mualla','Al-Sharqi','Al-Qasimi','Al-Falasi','Al-Ketbi','Al-Mazrouei','Al-Dhaheri','Al-Mheiri','Al-Suwaidi','Al-Kaabi','Al-Mansouri','Al-Hashemi','Al-Zaabi','Al-Shamsi','Al-Ameri','Al-Blooshi','Al-Marri'],
+                streets: ['Sheikh Zayed Road 12','Al Wasl Road 45','Jumeirah Beach Road 78','Al Khaleej Road 23','Corniche Road 56','Hamdan Street 34','Airport Road 67','Khalifa Street 89','Electra Street 11','Al Salam Street 43'],
+                cities: [{city:'Dubai',state:'Dubai',zip:''},{city:'Abu Dhabi',state:'Abu Dhabi',zip:''},{city:'Sharjah',state:'Sharjah',zip:''},{city:'Ajman',state:'Ajman',zip:''},{city:'Ras Al Khaimah',state:'Ras Al Khaimah',zip:''},{city:'Fujairah',state:'Fujairah',zip:''},{city:'Al Ain',state:'Abu Dhabi',zip:''}],
+                phoneFmt: () => '5' + rDigits(1) + ' ' + rDigits(3) + ' ' + rDigits(4)
+            },
+            TR: {
+                country: 'Turkey', phone: '+90',
+                first: ['Yusuf','Zeynep','Eymen','Elif','Alparslan','Defne','Omer','Azra','Mustafa','Nehir','Ahmet','Asya','Emir','Ecrin','Mehmet','Lina','Can','Meryem','Berat','Ebrar','Ali','Hira','Kerem','Ela','Hamza','Fatma','Miran','Ravza','Eren','Cemre'],
+                last: ['Yilmaz','Kaya','Demir','Celik','Sahin','Yildiz','Yildirim','Ozturk','Aydin','Ozdemir','Arslan','Dogan','Kilic','Aslan','Cetin','Kara','Koc','Kurt','Ozkan','Simsek'],
+                streets: ['Istiklal Caddesi 12','Bagdat Caddesi 45','Ataturk Bulvari 78','Cumhuriyet Caddesi 23','Halaskargazi Caddesi 56','Barbaros Bulvari 34','Valikonagi Caddesi 67','Rumeli Caddesi 89','Abdi Ipekci Caddesi 11','Nispetiye Caddesi 43'],
+                cities: [{city:'Istanbul',state:'Istanbul',zip:'34'},{city:'Ankara',state:'Ankara',zip:'06'},{city:'Izmir',state:'Izmir',zip:'35'},{city:'Antalya',state:'Antalya',zip:'07'},{city:'Bursa',state:'Bursa',zip:'16'},{city:'Adana',state:'Adana',zip:'01'},{city:'Gaziantep',state:'Gaziantep',zip:'27'},{city:'Konya',state:'Konya',zip:'42'},{city:'Mersin',state:'Mersin',zip:'33'},{city:'Eskisehir',state:'Eskisehir',zip:'26'}],
+                phoneFmt: () => '5' + rDigits(2) + ' ' + rDigits(3) + ' ' + rDigits(2) + ' ' + rDigits(2)
+            },
+            RU: {
+                country: 'Russia', phone: '+7',
+                first: ['Alexander','Anastasia','Dmitry','Maria','Maxim','Anna','Ivan','Daria','Artem','Sophia','Nikita','Victoria','Mikhail','Polina','Andrei','Elizaveta','Kirill','Ekaterina','Sergei','Alisa','Pavel','Veronika','Ilya','Ksenia','Egor','Valeria','Roman','Tatiana','Vladislav','Olga'],
+                last: ['Ivanov','Smirnov','Kuznetsov','Popov','Vasiliev','Petrov','Sokolov','Mikhailov','Novikov','Fedorov','Morozov','Volkov','Alekseev','Lebedev','Semenov','Egorov','Pavlov','Kozlov','Stepanov','Nikolaev'],
+                streets: ['Ulitsa Tverskaya 12','Ulitsa Arbat 45','Nevsky Prospekt 78','Ulitsa Lenina 23','Prospekt Mira 56','Ulitsa Pushkina 34','Kutuzovsky Prospekt 67','Bolshaya Morskaya 89','Ulitsa Bakunina 11','Prospekt Pobedy 43'],
+                cities: [{city:'Moscow',state:'Moscow',zip:'1'},{city:'Saint Petersburg',state:'Saint Petersburg',zip:'19'},{city:'Novosibirsk',state:'Novosibirsk Oblast',zip:'63'},{city:'Yekaterinburg',state:'Sverdlovsk Oblast',zip:'62'},{city:'Kazan',state:'Republic of Tatarstan',zip:'42'},{city:'Nizhny Novgorod',state:'Nizhny Novgorod Oblast',zip:'60'},{city:'Chelyabinsk',state:'Chelyabinsk Oblast',zip:'45'},{city:'Samara',state:'Samara Oblast',zip:'44'},{city:'Krasnoyarsk',state:'Krasnoyarsk Krai',zip:'66'},{city:'Rostov-on-Don',state:'Rostov Oblast',zip:'34'}],
+                phoneFmt: () => '9' + rDigits(2) + ' ' + rDigits(3) + '-' + rDigits(2) + '-' + rDigits(2)
+            }
+        };
+
+        function rDigits(n) { let s = ''; for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 10); return s; }
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+        function rInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+        function generateFakeId() {
+            const code = document.getElementById('fakeCountry').value;
+            const d = fakeData[code];
+            if (!d) { showToast('Country not supported', true); return; }
+
+            const firstName = pick(d.first);
+            const lastName = pick(d.last);
+            const fullName = firstName + ' ' + lastName;
+            const street = pick(d.streets);
+            const loc = pick(d.cities);
+            const zipExtra = ['US','DE','FR','BR','IN','MX','TH','VN','PH','MY','SG','SA','TR','RU'].includes(code) ? rDigits(3) : ['JP','KR'].includes(code) ? '-' + rDigits(4) : ['GB'].includes(code) ? ' ' + rDigits(1) + pick('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) + pick('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) : ['CA'].includes(code) ? ' ' + rDigits(1) + pick('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')) + rDigits(1) : ['AU'].includes(code) ? '' : ['ID'].includes(code) ? rDigits(3) : '';
+            const zip = loc.zip + zipExtra;
+            const phone = d.phone + ' ' + d.phoneFmt();
+            const year = rInt(1970, 2004);
+            const month = String(rInt(1, 12)).padStart(2, '0');
+            const day = String(rInt(1, 28)).padStart(2, '0');
+            const dob = day + '/' + month + '/' + year;
+            const emailUser = (firstName + '.' + lastName + rDigits(2)).toLowerCase().replace(/[^a-z0-9.]/g, '');
+            const emailDomains = ['gmail.com','yahoo.com','outlook.com','hotmail.com','protonmail.com'];
+            const email = emailUser + '@' + pick(emailDomains);
+
+            const card = document.getElementById('fakeIdCard');
+            card.innerHTML = `
+                <div class="fakeid-grid">
+                    <div class="fakeid-field"><span class="fakeid-label">Full Name</span><span class="fakeid-value">${escapeHtml(fullName)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Address</span><span class="fakeid-value">${escapeHtml(street)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">City</span><span class="fakeid-value">${escapeHtml(loc.city)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">State / Province</span><span class="fakeid-value">${escapeHtml(loc.state)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Postal Code</span><span class="fakeid-value">${escapeHtml(zip)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Country</span><span class="fakeid-value">${escapeHtml(d.country)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Phone</span><span class="fakeid-value">${escapeHtml(phone)}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Date of Birth</span><span class="fakeid-value">${dob}</span></div>
+                    <div class="fakeid-field"><span class="fakeid-label">Email</span><span class="fakeid-value">${escapeHtml(email)}</span></div>
+                </div>
+            `;
+            document.getElementById('fakeIdResult').classList.remove('hidden');
+            window._lastFakeId = { fullName, street, city: loc.city, state: loc.state, zip, country: d.country, phone, dob, email };
+            showToast('Fake ID generated');
+        }
+
+        function copyFakeId() {
+            const d = window._lastFakeId;
+            if (!d) return;
+            const text = `Full Name: ${d.fullName}\nAddress: ${d.street}\nCity: ${d.city}\nState: ${d.state}\nPostal Code: ${d.zip}\nCountry: ${d.country}\nPhone: ${d.phone}\nDate of Birth: ${d.dob}\nEmail: ${d.email}`;
+            navigator.clipboard.writeText(text).then(() => showToast('Fake ID copied!'));
+        }
+
+        // ─── Notepad ──────────────────────────────────────────────
+        const NOTES_KEY = 'xincro_notes';
+        let currentNoteId = null;
+        let autoSaveTimer = null;
+
+        function getNotes() {
+            try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || []; }
+            catch { return []; }
+        }
+        function saveNotesToStorage(notes) { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); }
+
+        function refreshNoteList() {
+            const sel = document.getElementById('noteSelect');
+            const notes = getNotes();
+            sel.innerHTML = '<option value="__new__">+ New Note</option>';
+            notes.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n.id;
+                opt.textContent = n.title || 'Untitled';
+                sel.appendChild(opt);
+            });
+            if (currentNoteId) sel.value = currentNoteId;
+        }
+
+        function loadNote(id) {
+            if (id === '__new__') {
+                currentNoteId = null;
+                document.getElementById('noteTitle').value = '';
+                document.getElementById('noteContent').value = '';
+                updateNoteCounts();
+                return;
+            }
+            const notes = getNotes();
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                currentNoteId = note.id;
+                document.getElementById('noteTitle').value = note.title || '';
+                document.getElementById('noteContent').value = note.content || '';
+                updateNoteCounts();
+            }
+        }
+
+        function saveNote() {
+            const title = document.getElementById('noteTitle').value.trim() || 'Untitled';
+            const content = document.getElementById('noteContent').value;
+            let notes = getNotes();
+
+            if (currentNoteId) {
+                const idx = notes.findIndex(n => n.id === currentNoteId);
+                if (idx >= 0) {
+                    notes[idx].title = title;
+                    notes[idx].content = content;
+                    notes[idx].updated = Date.now();
+                }
+            } else {
+                const id = 'note_' + Date.now();
+                notes.push({ id, title, content, created: Date.now(), updated: Date.now() });
+                currentNoteId = id;
+            }
+            saveNotesToStorage(notes);
+            refreshNoteList();
+            document.getElementById('noteAutoSave').textContent = 'Saved';
+            setTimeout(() => document.getElementById('noteAutoSave').textContent = '', 2000);
+            showToast('Note saved');
+        }
+
+        function deleteNote() {
+            if (!currentNoteId) { showToast('No note selected', true); return; }
+            if (!confirm('Delete this note?')) return;
+            let notes = getNotes().filter(n => n.id !== currentNoteId);
+            saveNotesToStorage(notes);
+            currentNoteId = null;
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            updateNoteCounts();
+            refreshNoteList();
+            showToast('Note deleted');
+        }
+
+        function downloadNote() {
+            const title = document.getElementById('noteTitle').value.trim() || 'note';
+            const content = document.getElementById('noteContent').value;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = title.replace(/[^a-zA-Z0-9_-]/g, '_') + '.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('Note downloaded');
+        }
+
+        function updateNoteCounts() {
+            const content = document.getElementById('noteContent').value;
+            document.getElementById('noteCharCount').textContent = content.length + ' characters';
+            document.getElementById('noteWordCount').textContent = (content.trim() ? content.trim().split(/\s+/).length : 0) + ' words';
+            document.getElementById('noteLineCount').textContent = (content.split('\n').length) + ' lines';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const editor = document.getElementById('noteContent');
+            if (editor) {
+                editor.addEventListener('input', () => {
+                    updateNoteCounts();
+                    document.getElementById('noteAutoSave').textContent = 'Unsaved changes...';
+                    clearTimeout(autoSaveTimer);
+                    autoSaveTimer = setTimeout(() => {
+                        if (currentNoteId || document.getElementById('noteTitle').value.trim() || editor.value.trim()) {
+                            saveNote();
+                        }
+                    }, 3000);
+                });
+                editor.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const start = editor.selectionStart;
+                        const end = editor.selectionEnd;
+                        editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                        editor.selectionStart = editor.selectionEnd = start + 4;
+                        editor.dispatchEvent(new Event('input'));
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        saveNote();
+                    }
+                });
+            }
+            refreshNoteList();
+        });
     </script>
 </body>
 </html>
