@@ -304,12 +304,15 @@ Response: {
             settings: 'Settings'
         };
 
+        const mainTabs = ['generate', 'manual', 'accounts'];
+
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
             document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
+            document.getElementById('statsRow').style.display = mainTabs.includes(tab) ? '' : 'none';
         }
 
 
