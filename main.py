@@ -1269,14 +1269,41 @@ async def stok_update_profile(layanan: str, acc_id: str, profile_id: int, reques
         if acc["id"] == acc_id:
             for p in acc.get("profiles", []):
                 if p["id"] == profile_id:
-                    p["name"] = data.get("profileName", p["name"])
-                    p["user"] = data.get("buyerName", p["user"])
-                    p["pin"] = data.get("pin", p["pin"])
+                    if "profileName" in data:
+                        p["name"] = data["profileName"]
+                    if "buyerName" in data:
+                        p["user"] = data["buyerName"]
+                    if "pin" in data:
+                        p["pin"] = data["pin"]
+                    if "avatar" in data:
+                        p["avatar"] = data["avatar"]
                     break
             break
 
     _write_json(path, accounts)
     return {"ok": True}
+
+
+@app.post("/api/stok/verify-pin/{layanan}/{acc_id}/{profile_id}")
+async def stok_verify_pin(layanan: str, acc_id: str, profile_id: int, request: Request):
+    require_admin(request)
+    data = await request.json()
+    pin = data.get("pin", "")
+    safe = _sanitize_layanan(layanan)
+    path = _stok_db_path(safe)
+    accounts = _read_json(path, [])
+
+    for acc in accounts:
+        if acc["id"] == acc_id:
+            for p in acc.get("profiles", []):
+                if p["id"] == profile_id:
+                    if not p.get("pin"):
+                        return {"ok": True, "profile": p, "account": {"email": acc["email"], "password": acc["password"], "expiryDate": acc.get("expiryDate", "")}}
+                    if p["pin"] == pin:
+                        return {"ok": True, "profile": p, "account": {"email": acc["email"], "password": acc["password"], "expiryDate": acc.get("expiryDate", "")}}
+                    raise HTTPException(403, "Wrong PIN")
+            raise HTTPException(404, "Profile not found")
+    raise HTTPException(404, "Account not found")
 
 
 @app.post("/api/stok/sell/{layanan}/{acc_id}")

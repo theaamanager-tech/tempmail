@@ -414,56 +414,74 @@ Response: {
 
             <!-- Stock Dashboard Tab -->
             <div class="tab-content" id="tab-stok-dashboard">
-                <div class="stok-top-bar">
-                    <div class="stok-layanan-controls">
-                        <select id="stokLayananSelect" onchange="stokLoadDashboard(this.value)"></select>
-                        <button class="btn-sm btn-copy" onclick="stokShowAddLayanan()">+ Add</button>
-                        <button class="btn-sm btn-scan-link" onclick="stokShowRenameLayanan()">Rename</button>
-                        <button class="btn-sm btn-danger" onclick="stokDeleteLayanan()">Delete</button>
+                <!-- Service Selector Bar -->
+                <div class="stok-service-bar">
+                    <div class="stok-service-left">
+                        <select id="stokLayananSelect" class="stok-service-select" onchange="stokLoadDashboard(this.value)"></select>
+                        <button class="stok-btn stok-btn-add" onclick="stokShowAddLayanan()" title="Tambah Layanan">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>Tambah</span>
+                        </button>
+                        <button class="stok-btn stok-btn-outline" onclick="stokShowRenameLayanan()" title="Rename">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="stok-btn stok-btn-del" onclick="stokDeleteLayanan()" title="Hapus Layanan">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
                     </div>
-                    <div class="stok-alert-btn" id="stokAlertBtn" onclick="toggleStokAlerts()" style="display:none;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-                        <span class="stok-alert-badge" id="stokAlertBadge">0</span>
+                    <div class="stok-service-right">
+                        <div class="stok-alert-btn" id="stokAlertBtn" onclick="toggleStokAlerts()" style="display:none;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                            <span class="stok-alert-badge" id="stokAlertBadge">0</span>
+                        </div>
                     </div>
                 </div>
                 <div id="stokAlertPanel" class="stok-alert-panel hidden"></div>
 
+                <!-- Summary Cards -->
                 <div class="stok-summary" id="stokSummary"></div>
 
-                <div class="form-card" id="stokImportCard">
-                    <h3 style="margin:0 0 12px;color:var(--text);">Import Akun Massal</h3>
-                    <div class="form-group">
-                        <label>Format: email|password (satu per baris)</label>
-                        <textarea id="stokBulkData" rows="4" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;font-size:13px;resize:vertical;"></textarea>
+                <!-- Import Section (Collapsible) -->
+                <details class="stok-import-section">
+                    <summary class="stok-import-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Import Akun Massal
+                    </summary>
+                    <div class="stok-import-body">
+                        <div class="form-group">
+                            <label>Format: email|password (satu per baris)</label>
+                            <textarea id="stokBulkData" rows="3" class="stok-textarea" placeholder="user@email.com|password123&#10;user2@email.com|pass456"></textarea>
+                        </div>
+                        <div class="stok-import-row">
+                            <div class="form-group" style="flex:1;">
+                                <label>Durasi (hari)</label>
+                                <input type="number" id="stokDurasi" value="30" min="1" max="365">
+                            </div>
+                            <button class="btn-primary" onclick="stokBulkImport()" style="align-self:flex-end;">Import</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Durasi (hari)</label>
-                        <input type="number" id="stokDurasi" value="30" min="1" max="365">
-                    </div>
-                    <button class="btn-primary" onclick="stokBulkImport()">Import</button>
+                </details>
+
+                <!-- Search -->
+                <div class="stok-search-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="stokSearch" placeholder="Cari akun..." oninput="stokFilterTable()">
                 </div>
 
-                <div class="search-bar">
-                    <input type="text" id="stokSearch" placeholder="Search accounts..." oninput="stokFilterTable()">
-                </div>
+                <!-- Inventory -->
                 <div class="stok-inventory" id="stokInventory"></div>
             </div>
 
             <!-- Stock History Tab -->
             <div class="tab-content" id="tab-stok-history">
-                <div class="search-bar">
-                    <input type="text" id="stokHistorySearch" placeholder="Search sales history..." oninput="stokFilterHistory()">
+                <div class="stok-search-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="stokHistorySearch" placeholder="Cari riwayat penjualan..." oninput="stokFilterHistory()">
                 </div>
-                <div class="accounts-table" id="stokHistoryTable">
-                    <table>
+                <div class="stok-table-wrap">
+                    <table class="stok-table">
                         <thead>
-                            <tr>
-                                <th>Layanan</th>
-                                <th>Email</th>
-                                <th>Tipe</th>
-                                <th>Pembeli</th>
-                                <th>Tanggal</th>
-                            </tr>
+                            <tr><th>Layanan</th><th>Email</th><th>Tipe</th><th>Pembeli</th><th>Tanggal</th></tr>
                         </thead>
                         <tbody id="stokHistoryBody"></tbody>
                     </table>
@@ -472,28 +490,20 @@ Response: {
 
             <!-- Stock Customer Check Tab -->
             <div class="tab-content" id="tab-stok-customer">
-                <div class="form-card">
-                    <div class="form-group">
-                        <label>Nama Customer</label>
-                        <div class="input-row">
-                            <input type="text" id="stokCustName" placeholder="Masukkan nama customer..." list="stokCustSuggest">
-                            <datalist id="stokCustSuggest"></datalist>
-                            <button class="btn-primary" onclick="stokCheckCustomer()">Cek</button>
-                        </div>
+                <div class="stok-cust-search">
+                    <div class="stok-search-bar" style="flex:1;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <input type="text" id="stokCustName" placeholder="Masukkan nama customer..." list="stokCustSuggest">
+                        <datalist id="stokCustSuggest"></datalist>
                     </div>
+                    <button class="btn-primary" onclick="stokCheckCustomer()">Cek</button>
                 </div>
-                <div id="stokCustResult" class="results-section hidden">
-                    <h2>Riwayat Pembelian</h2>
-                    <div class="accounts-table">
-                        <table>
+                <div id="stokCustResult" class="hidden" style="margin-top:16px;">
+                    <h3 style="color:var(--text);margin-bottom:12px;">Riwayat Pembelian</h3>
+                    <div class="stok-table-wrap">
+                        <table class="stok-table">
                             <thead>
-                                <tr>
-                                    <th>Layanan</th>
-                                    <th>Email</th>
-                                    <th>Tipe</th>
-                                    <th>Tanggal</th>
-                                    <th>Sisa Garansi</th>
-                                </tr>
+                                <tr><th>Layanan</th><th>Email</th><th>Tipe</th><th>Tanggal</th><th>Sisa Garansi</th></tr>
                             </thead>
                             <tbody id="stokCustBody"></tbody>
                         </table>
@@ -503,10 +513,13 @@ Response: {
         </main>
     </div>
 
-    <!-- Stock Sell Modal -->
+    <!-- Sell Modal -->
     <div id="stokSellModal" class="stok-modal hidden">
         <div class="stok-modal-content">
-            <h3>Jual Akun</h3>
+            <div class="stok-modal-header">
+                <h3>Jual Akun</h3>
+                <button class="stok-modal-close" onclick="closeStokModal()">&times;</button>
+            </div>
             <div class="form-group">
                 <label>Nama Pembeli</label>
                 <input type="text" id="stokSellBuyer" placeholder="Nama pembeli..." list="stokBuyerSuggest">
@@ -514,42 +527,73 @@ Response: {
             </div>
             <div class="form-group">
                 <label>Tipe Penjualan</label>
-                <div class="segmented-control">
+                <div class="stok-seg">
                     <input type="radio" name="stokSellType" id="sellFull" value="full" checked>
-                    <label for="sellFull" class="segment">Full Account</label>
+                    <label for="sellFull">Full Account</label>
                     <input type="radio" name="stokSellType" id="sellSlot" value="slot">
-                    <label for="sellSlot" class="segment">Per Slot</label>
+                    <label for="sellSlot">Per Slot</label>
                 </div>
             </div>
-            <div id="stokSlotPicker" class="hidden" style="margin-bottom:12px;"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button class="btn-sm btn-danger" onclick="closeStokModal()">Batal</button>
+            <div id="stokSlotPicker" class="hidden"></div>
+            <div class="stok-modal-actions">
+                <button class="stok-btn stok-btn-outline" onclick="closeStokModal()">Batal</button>
                 <button class="btn-primary" onclick="stokConfirmSell()">Jual</button>
             </div>
         </div>
     </div>
 
-    <!-- Stock Profile Modal -->
+    <!-- Profile View Modal (Netflix-style) -->
     <div id="stokProfileModal" class="stok-modal hidden">
+        <div class="stok-modal-content stok-modal-lg">
+            <div class="stok-modal-header">
+                <h3 id="stokProfileModalTitle">Profiles</h3>
+                <button class="stok-modal-close" onclick="closeProfileModal()">&times;</button>
+            </div>
+            <div class="stok-profiles-grid" id="stokProfileList"></div>
+        </div>
+    </div>
+
+    <!-- Profile Detail / Edit Modal -->
+    <div id="stokProfileDetailModal" class="stok-modal hidden">
         <div class="stok-modal-content">
-            <h3>Manage Profiles</h3>
-            <div id="stokProfileList"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-                <button class="btn-sm btn-danger" onclick="closeProfileModal()">Tutup</button>
+            <div class="stok-modal-header">
+                <h3 id="stokProfileDetailTitle">Profile Detail</h3>
+                <button class="stok-modal-close" onclick="document.getElementById('stokProfileDetailModal').classList.add('hidden')">&times;</button>
+            </div>
+            <div id="stokProfileDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- PIN Entry Modal -->
+    <div id="stokPinModal" class="stok-modal hidden">
+        <div class="stok-modal-content stok-modal-sm">
+            <div class="stok-pin-entry">
+                <div class="stok-pin-avatar" id="stokPinAvatar"></div>
+                <h3 id="stokPinProfileName" style="color:var(--text);margin:8px 0 4px;">Profile</h3>
+                <p style="color:var(--text2);font-size:13px;margin:0 0 16px;">Masukkan PIN untuk melanjutkan</p>
+                <input type="password" id="stokPinInput" class="stok-pin-input" maxlength="10" placeholder="PIN" onkeydown="if(event.key==='Enter')stokSubmitPin()">
+                <div id="stokPinError" class="stok-pin-error hidden">PIN salah</div>
+                <div class="stok-modal-actions" style="margin-top:12px;">
+                    <button class="stok-btn stok-btn-outline" onclick="document.getElementById('stokPinModal').classList.add('hidden')">Batal</button>
+                    <button class="btn-primary" onclick="stokSubmitPin()">Masuk</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Add Layanan Modal -->
+    <!-- Layanan Add/Rename Modal -->
     <div id="stokAddLayananModal" class="stok-modal hidden">
-        <div class="stok-modal-content">
-            <h3 id="stokLayananModalTitle">Tambah Layanan</h3>
+        <div class="stok-modal-content stok-modal-sm">
+            <div class="stok-modal-header">
+                <h3 id="stokLayananModalTitle">Tambah Layanan</h3>
+                <button class="stok-modal-close" onclick="document.getElementById('stokAddLayananModal').classList.add('hidden')">&times;</button>
+            </div>
             <div class="form-group">
                 <label id="stokLayananModalLabel">Nama Layanan</label>
                 <input type="text" id="stokLayananModalInput" placeholder="contoh: netflix">
             </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-                <button class="btn-sm btn-danger" onclick="document.getElementById('stokAddLayananModal').classList.add('hidden')">Batal</button>
+            <div class="stok-modal-actions">
+                <button class="stok-btn stok-btn-outline" onclick="document.getElementById('stokAddLayananModal').classList.add('hidden')">Batal</button>
                 <button class="btn-primary" id="stokLayananModalBtn" onclick="stokConfirmAddLayanan()">Tambah</button>
             </div>
         </div>
@@ -1347,6 +1391,18 @@ Response: {
         let stokAccounts = [];
         let stokSellTarget = null;
         let stokHistoryData = [];
+        let stokPinTarget = null;
+        const AVATAR_COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#e91e63','#00bcd4','#ff5722'];
+
+        function stokAvatarHtml(profile, size) {
+            size = size || 56;
+            if (profile.avatar) {
+                return `<div class="stok-avatar" style="width:${size}px;height:${size}px;"><img src="${profile.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
+            }
+            const initial = (profile.name || 'P').charAt(0).toUpperCase();
+            const color = AVATAR_COLORS[(profile.id || 0) % AVATAR_COLORS.length];
+            return `<div class="stok-avatar" style="width:${size}px;height:${size}px;background:${color};display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:${Math.floor(size*0.4)}px;font-weight:700;color:#fff;">${initial}</div>`;
+        }
 
         async function stokLoadDashboard(view) {
             const url = view ? `/api/stok/dashboard?view=${encodeURIComponent(view)}` : '/api/stok/dashboard';
@@ -1355,37 +1411,42 @@ Response: {
 
             const sel = document.getElementById('stokLayananSelect');
             sel.innerHTML = data.layananList.length ? data.layananList.map(l =>
-                `<option value="${l}" ${l === data.currentView ? 'selected' : ''}>${l.toUpperCase()}</option>`
-            ).join('') : '<option value="">-- No services --</option>';
+                `<option value="${l}" ${l === data.currentView ? 'selected' : ''}>${l.charAt(0).toUpperCase() + l.slice(1)}</option>`
+            ).join('') : '<option value="">Belum ada layanan</option>';
 
             stokCurrentView = data.currentView;
             stokAccounts = data.accounts;
 
-            // Summary cards
             const sumEl = document.getElementById('stokSummary');
-            let sumHtml = '<div class="stok-summary-grid">';
-            for (const [lay, info] of Object.entries(data.summary)) {
-                sumHtml += `<div class="stok-summary-card">
-                    <div class="stok-summary-name">${lay.toUpperCase()}</div>
-                    <div class="stok-summary-stats">
-                        <span class="stok-avail">${info.available} available</span>
-                        <span class="stok-sold">${info.sold} sold</span>
-                    </div>
-                </div>`;
+            const entries = Object.entries(data.summary);
+            if (entries.length) {
+                sumEl.innerHTML = '<div class="stok-summary-grid">' + entries.map(([lay, info]) => {
+                    const pct = info.total ? Math.round((info.available / info.total) * 100) : 0;
+                    return `<div class="stok-summary-card ${lay === stokCurrentView ? 'stok-summary-active' : ''}" onclick="stokLoadDashboard('${lay}')">
+                        <div class="stok-summary-top">
+                            <span class="stok-summary-name">${lay.charAt(0).toUpperCase() + lay.slice(1)}</span>
+                            <span class="stok-summary-total">${info.total}</span>
+                        </div>
+                        <div class="stok-progress"><div class="stok-progress-bar" style="width:${pct}%"></div></div>
+                        <div class="stok-summary-stats">
+                            <span class="stok-avail">${info.available} tersedia</span>
+                            <span class="stok-sold">${info.sold} terjual</span>
+                        </div>
+                    </div>`;
+                }).join('') + '</div>';
+            } else {
+                sumEl.innerHTML = '<div class="stok-empty-state"><p>Belum ada layanan. Klik <strong>Tambah</strong> untuk memulai.</p></div>';
             }
-            sumHtml += '</div>';
-            sumEl.innerHTML = sumHtml;
 
-            // Alerts
             const alertBtn = document.getElementById('stokAlertBtn');
             const alertBadge = document.getElementById('stokAlertBadge');
             if (data.alerts.length > 0) {
                 alertBtn.style.display = 'flex';
                 alertBadge.textContent = data.alerts.length;
-                const alertPanel = document.getElementById('stokAlertPanel');
-                alertPanel.innerHTML = data.alerts.map(a =>
-                    `<div class="stok-alert-item">
-                        <strong>${a.email}</strong> — ${a.daysLeft <= 0 ? '<span style="color:#f85149">EXPIRED</span>' : `<span style="color:#d29922">${a.daysLeft} hari lagi</span>`}
+                document.getElementById('stokAlertPanel').innerHTML = data.alerts.map(a =>
+                    `<div class="stok-alert-item ${a.daysLeft <= 0 ? 'stok-alert-expired' : ''}">
+                        <span>${a.email}</span>
+                        <span>${a.daysLeft <= 0 ? 'EXPIRED' : a.daysLeft + ' hari lagi'}</span>
                     </div>`
                 ).join('');
             } else {
@@ -1398,57 +1459,83 @@ Response: {
         function stokRenderInventory() {
             const inv = document.getElementById('stokInventory');
             if (!stokAccounts.length) {
-                inv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">No accounts in this service</div>';
+                inv.innerHTML = '<div class="stok-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M2 8h20"/></svg><p>Tidak ada akun di layanan ini</p></div>';
                 return;
             }
-            let html = '<div class="accounts-table"><table><thead><tr>' +
-                '<th><input type="checkbox" id="stokSelectAll" onchange="stokToggleAll(this.checked)"></th>' +
-                '<th>Email</th><th>Password</th><th>Expiry</th><th>Profiles</th><th>Actions</th>' +
-                '</tr></thead><tbody>';
+            let html = '';
             stokAccounts.forEach(acc => {
                 const exp = acc.expiryDate ? new Date(acc.expiryDate) : null;
                 const expStr = exp ? exp.toLocaleDateString('id-ID') : '-';
                 const now = new Date();
                 const daysLeft = exp ? Math.ceil((exp - now) / 86400000) : null;
-                const expClass = daysLeft !== null && daysLeft <= 7 ? (daysLeft <= 0 ? 'stok-expired' : 'stok-expiring') : '';
-                const usedSlots = acc.profiles ? acc.profiles.filter(p => p.user).length : 0;
-                const totalSlots = acc.profiles ? acc.profiles.length : 5;
-                html += `<tr class="stok-row ${expClass}" id="stok-row-${acc.id}">
-                    <td><input type="checkbox" class="stok-cb" value="${acc.id}"></td>
-                    <td>${acc.email}</td>
-                    <td><code>${acc.password}</code></td>
-                    <td>${expStr}${daysLeft !== null && daysLeft <= 7 ? ` <small>(${daysLeft}d)</small>` : ''}</td>
-                    <td><span class="stok-slot-badge" onclick="stokShowProfiles('${acc.id}')">${usedSlots}/${totalSlots}</span></td>
-                    <td class="stok-actions">
-                        <button class="btn-sm btn-copy" onclick="stokShowSell('${acc.id}')">Jual</button>
-                        <button class="btn-sm btn-danger" onclick="stokDeleteAccount('${acc.id}')">Hapus</button>
-                    </td>
-                </tr>`;
+                const statusClass = daysLeft !== null && daysLeft <= 0 ? 'stok-card-expired' : (daysLeft !== null && daysLeft <= 7 ? 'stok-card-warning' : '');
+                const profiles = acc.profiles || [];
+
+                html += `<div class="stok-acc-card ${statusClass}" id="stok-row-${acc.id}">
+                    <div class="stok-acc-header">
+                        <div class="stok-acc-info">
+                            <input type="checkbox" class="stok-cb" value="${acc.id}">
+                            <div>
+                                <div class="stok-acc-email">${acc.email}</div>
+                                <div class="stok-acc-meta">
+                                    <span>Exp: ${expStr}</span>
+                                    ${daysLeft !== null && daysLeft <= 7 ? `<span class="${daysLeft <= 0 ? 'stok-tag-red' : 'stok-tag-yellow'}">${daysLeft <= 0 ? 'Expired' : daysLeft + 'd left'}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stok-acc-actions">
+                            <button class="stok-btn stok-btn-outline" onclick="stokShowSell('${acc.id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                Jual
+                            </button>
+                            <button class="stok-btn stok-btn-del" onclick="stokDeleteAccount('${acc.id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="stok-profiles-row">
+                        ${profiles.map(p => `
+                            <div class="stok-profile-card" onclick="stokClickProfile('${acc.id}', ${p.id})">
+                                ${stokAvatarHtml(p, 48)}
+                                <div class="stok-profile-name">${p.name || 'Profile ' + p.id}</div>
+                                ${p.user ? `<div class="stok-profile-buyer">${p.user}</div>` : ''}
+                                ${p.pin ? '<div class="stok-profile-lock">🔒</div>' : ''}
+                            </div>
+                        `).join('')}
+                        <div class="stok-profile-card stok-profile-edit" onclick="stokShowProfiles('${acc.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span>Edit</span>
+                        </div>
+                    </div>
+                </div>`;
             });
-            html += '</tbody></table></div>';
-            html += '<div class="stok-bulk-bar" id="stokBulkBar" style="display:none;">' +
-                '<input type="text" id="stokBulkBuyer" placeholder="Nama pembeli...">' +
-                '<button class="btn-primary" onclick="stokBulkSell()">Jual Selected</button>' +
-                '<button class="btn-sm btn-danger" onclick="stokBulkDelete()">Hapus Selected</button></div>';
+
+            html += `<div class="stok-bulk-bar" id="stokBulkBar" style="display:none;">
+                <input type="text" id="stokBulkBuyer" placeholder="Nama pembeli...">
+                <button class="btn-primary" onclick="stokBulkSell()">Jual Selected</button>
+                <button class="stok-btn stok-btn-del" onclick="stokBulkDelete()">Hapus Selected</button>
+            </div>`;
             inv.innerHTML = html;
         }
 
         function stokToggleAll(checked) {
             document.querySelectorAll('.stok-cb').forEach(cb => cb.checked = checked);
-            document.getElementById('stokBulkBar').style.display = checked ? 'flex' : 'none';
+            const bar = document.getElementById('stokBulkBar');
+            if (bar) bar.style.display = checked ? 'flex' : 'none';
         }
 
         document.addEventListener('change', (e) => {
             if (e.target.classList.contains('stok-cb')) {
                 const any = document.querySelector('.stok-cb:checked');
-                document.getElementById('stokBulkBar').style.display = any ? 'flex' : 'none';
+                const bar = document.getElementById('stokBulkBar');
+                if (bar) bar.style.display = any ? 'flex' : 'none';
             }
         });
 
         function stokFilterTable() {
             const q = document.getElementById('stokSearch').value.toLowerCase();
-            document.querySelectorAll('.stok-row').forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            document.querySelectorAll('.stok-acc-card').forEach(card => {
+                card.style.display = card.textContent.toLowerCase().includes(q) ? '' : 'none';
             });
         }
 
@@ -1461,9 +1548,9 @@ Response: {
         }
 
         function stokShowRenameLayanan() {
-            if (!stokCurrentView) return toast('No service selected');
+            if (!stokCurrentView) return toast('Belum ada layanan');
             document.getElementById('stokLayananModalTitle').textContent = 'Rename Layanan';
-            document.getElementById('stokLayananModalLabel').textContent = `Rename "${stokCurrentView}" to:`;
+            document.getElementById('stokLayananModalLabel').textContent = `Rename "${stokCurrentView}" menjadi:`;
             document.getElementById('stokLayananModalInput').value = '';
             document.getElementById('stokLayananModalBtn').onclick = stokConfirmRenameLayanan;
             document.getElementById('stokAddLayananModal').classList.remove('hidden');
@@ -1475,7 +1562,7 @@ Response: {
             const resp = await fetch('/api/stok/layanan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
             if (resp.ok) {
                 document.getElementById('stokAddLayananModal').classList.add('hidden');
-                toast('Service added');
+                toast('Layanan berhasil ditambahkan');
                 stokLoadDashboard(name);
             } else {
                 const err = await resp.json();
@@ -1489,7 +1576,7 @@ Response: {
             const resp = await fetch('/api/stok/layanan/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({old: stokCurrentView, new: newName}) });
             if (resp.ok) {
                 document.getElementById('stokAddLayananModal').classList.add('hidden');
-                toast('Service renamed');
+                toast('Layanan berhasil di-rename');
                 stokLoadDashboard(newName);
             } else {
                 const err = await resp.json();
@@ -1499,20 +1586,20 @@ Response: {
 
         async function stokDeleteLayanan() {
             if (!stokCurrentView) return;
-            if (!confirm(`Delete service "${stokCurrentView}" and all its data?`)) return;
+            if (!confirm(`Hapus layanan "${stokCurrentView}" beserta semua datanya?`)) return;
             await fetch(`/api/stok/layanan/${stokCurrentView}`, { method: 'DELETE' });
-            toast('Service deleted');
+            toast('Layanan dihapus');
             stokLoadDashboard();
         }
 
         async function stokBulkImport() {
-            if (!stokCurrentView) return toast('Select or create a service first');
+            if (!stokCurrentView) return toast('Pilih atau buat layanan terlebih dahulu');
             const bulkData = document.getElementById('stokBulkData').value.trim();
             const durasi = document.getElementById('stokDurasi').value;
-            if (!bulkData) return toast('Paste account data');
+            if (!bulkData) return toast('Masukkan data akun');
             const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: stokCurrentView, bulkData, durasi}) });
             const data = await resp.json();
-            toast(`Imported ${data.imported} accounts`);
+            toast(`${data.imported} akun berhasil diimport`);
             document.getElementById('stokBulkData').value = '';
             stokLoadDashboard(stokCurrentView);
         }
@@ -1522,12 +1609,13 @@ Response: {
         }
 
         async function stokDeleteAccount(accId) {
-            if (!confirm('Delete this account?')) return;
+            if (!confirm('Hapus akun ini?')) return;
             await fetch(`/api/stok/account/${stokCurrentView}/${accId}`, { method: 'DELETE' });
-            toast('Account deleted');
+            toast('Akun dihapus');
             stokLoadDashboard(stokCurrentView);
         }
 
+        // ─── Sell Flow ────────────────────────────────────────────
         function stokShowSell(accId) {
             stokSellTarget = accId;
             const acc = stokAccounts.find(a => a.id === accId);
@@ -1536,8 +1624,10 @@ Response: {
             document.getElementById('stokSlotPicker').classList.add('hidden');
             if (acc && acc.profiles) {
                 document.getElementById('stokSlotPicker').innerHTML = acc.profiles.map(p =>
-                    `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--text);">
-                        <input type="radio" name="stokSlotId" value="${p.id}"> ${p.name} ${p.user ? `(${p.user})` : '(Available)'}
+                    `<label class="stok-slot-option">
+                        <input type="radio" name="stokSlotId" value="${p.id}">
+                        ${stokAvatarHtml(p, 28)}
+                        <span>${p.name} ${p.user ? '(' + p.user + ')' : ''}</span>
                     </label>`
                 ).join('');
             }
@@ -1545,32 +1635,31 @@ Response: {
             document.getElementById('stokSellModal').classList.remove('hidden');
         }
 
-        document.querySelectorAll('input[name="stokSellType"]').forEach(r => {
-            r.addEventListener('change', () => {
-                document.getElementById('stokSlotPicker').classList.toggle('hidden', r.value !== 'slot');
-            });
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'stokSellType') {
+                document.getElementById('stokSlotPicker').classList.toggle('hidden', e.target.value !== 'slot');
+            }
         });
 
         async function stokLoadBuyerSuggestions() {
             const resp = await fetch('/api/stok/customers');
             const customers = await resp.json();
-            const dl = document.getElementById('stokBuyerSuggest');
-            dl.innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+            document.getElementById('stokBuyerSuggest').innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
         }
 
         async function stokConfirmSell() {
             const pembeli = document.getElementById('stokSellBuyer').value.trim();
-            if (!pembeli) return toast('Enter buyer name');
+            if (!pembeli) return toast('Masukkan nama pembeli');
             const sellType = document.querySelector('input[name="stokSellType"]:checked').value;
             const body = { pembeli, isSlot: sellType === 'slot' };
             if (sellType === 'slot') {
                 const slotRadio = document.querySelector('input[name="stokSlotId"]:checked');
-                if (!slotRadio) return toast('Select a slot');
+                if (!slotRadio) return toast('Pilih slot');
                 body.slotId = parseInt(slotRadio.value);
             }
             await fetch(`/api/stok/sell/${stokCurrentView}/${stokSellTarget}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             closeStokModal();
-            toast('Account sold');
+            toast('Akun berhasil dijual');
             stokLoadDashboard(stokCurrentView);
         }
 
@@ -1579,21 +1668,94 @@ Response: {
             stokSellTarget = null;
         }
 
+        // ─── Profile System (Netflix-style) ───────────────────────
+        function stokClickProfile(accId, profileId) {
+            const acc = stokAccounts.find(a => a.id === accId);
+            if (!acc) return;
+            const profile = acc.profiles.find(p => p.id === profileId);
+            if (!profile) return;
+
+            if (profile.pin) {
+                stokPinTarget = { accId, profileId };
+                document.getElementById('stokPinAvatar').innerHTML = stokAvatarHtml(profile, 72);
+                document.getElementById('stokPinProfileName').textContent = profile.name || 'Profile ' + profile.id;
+                document.getElementById('stokPinInput').value = '';
+                document.getElementById('stokPinError').classList.add('hidden');
+                document.getElementById('stokPinModal').classList.remove('hidden');
+                setTimeout(() => document.getElementById('stokPinInput').focus(), 100);
+            } else {
+                stokShowProfileDetail(acc, profile);
+            }
+        }
+
+        async function stokSubmitPin() {
+            if (!stokPinTarget) return;
+            const pin = document.getElementById('stokPinInput').value;
+            try {
+                const resp = await fetch(`/api/stok/verify-pin/${stokCurrentView}/${stokPinTarget.accId}/${stokPinTarget.profileId}`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    document.getElementById('stokPinModal').classList.add('hidden');
+                    stokShowProfileDetail(
+                        {email: data.account.email, password: data.account.password, expiryDate: data.account.expiryDate},
+                        data.profile
+                    );
+                } else {
+                    document.getElementById('stokPinError').classList.remove('hidden');
+                    document.getElementById('stokPinInput').value = '';
+                    document.getElementById('stokPinInput').focus();
+                }
+            } catch {
+                document.getElementById('stokPinError').classList.remove('hidden');
+            }
+        }
+
+        function stokShowProfileDetail(acc, profile) {
+            document.getElementById('stokProfileDetailTitle').textContent = profile.name || 'Profile';
+            const exp = acc.expiryDate ? new Date(acc.expiryDate) : null;
+            document.getElementById('stokProfileDetailBody').innerHTML = `
+                <div class="stok-detail-card">
+                    <div class="stok-detail-avatar">${stokAvatarHtml(profile, 80)}</div>
+                    <div class="stok-detail-grid">
+                        <div class="stok-detail-field"><span class="stok-detail-label">Email</span><span class="stok-detail-value">${acc.email}</span></div>
+                        <div class="stok-detail-field"><span class="stok-detail-label">Password</span><span class="stok-detail-value">${acc.password}</span></div>
+                        <div class="stok-detail-field"><span class="stok-detail-label">Profile</span><span class="stok-detail-value">${profile.name}</span></div>
+                        <div class="stok-detail-field"><span class="stok-detail-label">Pembeli</span><span class="stok-detail-value">${profile.user || '-'}</span></div>
+                        <div class="stok-detail-field"><span class="stok-detail-label">PIN</span><span class="stok-detail-value">${profile.pin || '-'}</span></div>
+                        <div class="stok-detail-field"><span class="stok-detail-label">Expiry</span><span class="stok-detail-value">${exp ? exp.toLocaleDateString('id-ID') : '-'}</span></div>
+                    </div>
+                </div>`;
+            document.getElementById('stokProfileDetailModal').classList.remove('hidden');
+        }
+
         function stokShowProfiles(accId) {
             const acc = stokAccounts.find(a => a.id === accId);
             if (!acc || !acc.profiles) return;
+            document.getElementById('stokProfileModalTitle').textContent = acc.email + ' — Profiles';
             document.getElementById('stokProfileList').innerHTML = acc.profiles.map(p =>
-                `<div class="stok-profile-item">
-                    <div class="stok-profile-header">${p.name}</div>
-                    <div class="form-group" style="margin:6px 0;">
-                        <input type="text" id="profName_${acc.id}_${p.id}" value="${p.name || ''}" placeholder="Profile name" style="margin-bottom:4px;">
-                        <input type="text" id="profBuyer_${acc.id}_${p.id}" value="${p.user || ''}" placeholder="Buyer name" style="margin-bottom:4px;">
-                        <input type="text" id="profPin_${acc.id}_${p.id}" value="${p.pin || ''}" placeholder="PIN">
+                `<div class="stok-profile-edit-card">
+                    <div class="stok-profile-edit-avatar" onclick="stokChangeAvatar('${acc.id}', ${p.id})">
+                        ${stokAvatarHtml(p, 64)}
+                        <div class="stok-avatar-overlay">📷</div>
                     </div>
-                    <button class="btn-sm btn-copy" onclick="stokSaveProfile('${acc.id}', ${p.id})">Save</button>
+                    <div class="stok-profile-edit-fields">
+                        <input type="text" id="profName_${acc.id}_${p.id}" value="${p.name || ''}" placeholder="Nama profile">
+                        <input type="text" id="profBuyer_${acc.id}_${p.id}" value="${p.user || ''}" placeholder="Nama pembeli">
+                        <input type="password" id="profPin_${acc.id}_${p.id}" value="${p.pin || ''}" placeholder="PIN (opsional)">
+                        <input type="text" id="profAvatar_${acc.id}_${p.id}" value="${p.avatar || ''}" placeholder="URL gambar avatar (opsional)">
+                    </div>
+                    <button class="btn-primary stok-profile-save-btn" onclick="stokSaveProfile('${acc.id}', ${p.id})">Simpan</button>
                 </div>`
             ).join('');
             document.getElementById('stokProfileModal').classList.remove('hidden');
+        }
+
+        function stokChangeAvatar(accId, profileId) {
+            const input = document.getElementById(`profAvatar_${accId}_${profileId}`);
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function closeProfileModal() {
@@ -1604,30 +1766,32 @@ Response: {
             const profileName = document.getElementById(`profName_${accId}_${profileId}`).value;
             const buyerName = document.getElementById(`profBuyer_${accId}_${profileId}`).value;
             const pin = document.getElementById(`profPin_${accId}_${profileId}`).value;
+            const avatar = document.getElementById(`profAvatar_${accId}_${profileId}`).value;
             await fetch(`/api/stok/profile/${stokCurrentView}/${accId}/${profileId}`, {
                 method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({profileName, buyerName, pin})
+                body: JSON.stringify({profileName, buyerName, pin, avatar})
             });
-            toast('Profile updated');
+            toast('Profile berhasil disimpan');
             stokLoadDashboard(stokCurrentView);
+            closeProfileModal();
         }
 
         async function stokBulkSell() {
             const ids = [...document.querySelectorAll('.stok-cb:checked')].map(cb => cb.value);
             const pembeli = document.getElementById('stokBulkBuyer').value.trim();
-            if (!ids.length) return toast('Select accounts');
-            if (!pembeli) return toast('Enter buyer name');
+            if (!ids.length) return toast('Pilih akun');
+            if (!pembeli) return toast('Masukkan nama pembeli');
             await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'sell', layanan: stokCurrentView, ids, pembeli}) });
-            toast(`Sold ${ids.length} accounts`);
+            toast(`${ids.length} akun berhasil dijual`);
             stokLoadDashboard(stokCurrentView);
         }
 
         async function stokBulkDelete() {
             const ids = [...document.querySelectorAll('.stok-cb:checked')].map(cb => cb.value);
-            if (!ids.length) return toast('Select accounts');
-            if (!confirm(`Delete ${ids.length} accounts?`)) return;
+            if (!ids.length) return toast('Pilih akun');
+            if (!confirm(`Hapus ${ids.length} akun?`)) return;
             await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', layanan: stokCurrentView, ids}) });
-            toast(`Deleted ${ids.length} accounts`);
+            toast(`${ids.length} akun dihapus`);
             stokLoadDashboard(stokCurrentView);
         }
 
@@ -1643,51 +1807,48 @@ Response: {
             const tbody = document.getElementById('stokHistoryBody');
             tbody.innerHTML = items.map(h =>
                 `<tr>
-                    <td>${h.layanan.toUpperCase()}</td>
+                    <td><span class="stok-table-tag">${h.layanan.toUpperCase()}</span></td>
                     <td>${h.email}</td>
                     <td>${h.tipe}</td>
                     <td>${h.pembeli}</td>
                     <td>${h.date ? new Date(h.date).toLocaleDateString('id-ID') : '-'}</td>
                 </tr>`
-            ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);">No sales history</td></tr>';
+            ).join('') || '<tr><td colspan="5" class="stok-table-empty">Belum ada riwayat penjualan</td></tr>';
         }
 
         function stokFilterHistory() {
             const q = document.getElementById('stokHistorySearch').value.toLowerCase();
-            const filtered = stokHistoryData.filter(h =>
+            stokRenderHistory(stokHistoryData.filter(h =>
                 (h.layanan + h.email + h.tipe + h.pembeli).toLowerCase().includes(q)
-            );
-            stokRenderHistory(filtered);
+            ));
         }
 
         // ─── Stock Customer Check ─────────────────────────────────
         async function stokLoadCustomerSuggestions() {
             const resp = await fetch('/api/stok/customers');
             const customers = await resp.json();
-            const dl = document.getElementById('stokCustSuggest');
-            dl.innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+            document.getElementById('stokCustSuggest').innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
         }
 
         async function stokCheckCustomer() {
             const name = document.getElementById('stokCustName').value.trim();
-            if (!name) return toast('Enter customer name');
+            if (!name) return toast('Masukkan nama customer');
             const resp = await fetch(`/api/stok/customer-check?name=${encodeURIComponent(name)}`);
             const data = await resp.json();
             const result = document.getElementById('stokCustResult');
             const tbody = document.getElementById('stokCustBody');
-            if (data.purchases.length === 0) {
-                result.classList.remove('hidden');
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);">No purchases found</td></tr>';
+            result.classList.remove('hidden');
+            if (!data.purchases.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="stok-table-empty">Tidak ditemukan riwayat pembelian</td></tr>';
                 return;
             }
-            result.classList.remove('hidden');
             tbody.innerHTML = data.purchases.map(p =>
                 `<tr>
-                    <td>${(p.layanan || '').toUpperCase()}</td>
+                    <td><span class="stok-table-tag">${(p.layanan || '').toUpperCase()}</span></td>
                     <td>${p.email || ''}</td>
                     <td>${p.tipe || ''}</td>
                     <td>${p.date ? new Date(p.date).toLocaleDateString('id-ID') : '-'}</td>
-                    <td>${p.daysLeft !== undefined ? (p.daysLeft > 0 ? `${p.daysLeft} hari` : '<span style="color:#f85149">Expired</span>') : '-'}</td>
+                    <td>${p.daysLeft !== undefined ? (p.daysLeft > 0 ? `<span class="stok-tag-green">${p.daysLeft} hari</span>` : '<span class="stok-tag-red">Expired</span>') : '-'}</td>
                 </tr>`
             ).join('');
         }
