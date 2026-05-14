@@ -420,7 +420,7 @@ Response: {
                         <h4 style="margin:0 0 12px;">Tambah Profil Baru</h4>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                             <div><label style="font-size:12px;color:var(--text-muted);">Nama Profil</label><input type="text" id="newHeadName" placeholder="Digital Ningrat" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;"></div>
-                            <div><label style="font-size:12px;color:var(--text-muted);">PIN (4 digit, opsional)</label><input type="text" id="newHeadPin" placeholder="1234" maxlength="4" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>
+                            <div><label style="font-size:12px;color:var(--text-muted);">PIN (4 atau 6 digit, opsional)</label><input type="text" id="newHeadPin" placeholder="1234 / 123456" maxlength="6" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>
                         </div>
                         <div style="margin-top:8px;"><label style="font-size:12px;color:var(--text-muted);">URL Avatar (opsional)</label><input type="text" id="newHeadAvatar" placeholder="https://..." style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;"></div>
                         <button onclick="addHeadProfile()" style="margin-top:12px;padding:8px 20px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Tambah Profil</button>
@@ -474,6 +474,7 @@ Response: {
                     <div style="font-weight:700;font-size:14px;">${h.name}</div>
                     <div style="font-size:11px;color:var(--text-muted);">${h.pin ? 'PIN: ****' : 'Tanpa PIN'}</div>
                 </div>
+                <button onclick="showChangePinPanel('${h.id}', ${h.pin ? 'true' : 'false'})" style="padding:6px 12px;background:#6c5ce7;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:4px;">${h.pin ? 'Ubah PIN' : 'Pasang PIN'}</button>
                 <button onclick="deleteHeadProfile('${h.id}')" style="padding:6px 12px;background:var(--red,#e74c3c);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Hapus</button>
             </div>`).join('');
         }
@@ -483,12 +484,54 @@ Response: {
             if (!name) return showToast('Masukkan nama profil');
             const avatar = document.getElementById('newHeadAvatar').value.trim();
             const pin = document.getElementById('newHeadPin').value.trim();
+            if (pin && pin.length !== 4 && pin.length !== 6) return showToast('PIN harus 4 atau 6 digit');
+            if (pin && !/^\d+$/.test(pin)) return showToast('PIN harus angka');
             await fetch('/api/stok/heads', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, avatar, pin}) });
             document.getElementById('newHeadName').value = '';
             document.getElementById('newHeadAvatar').value = '';
             document.getElementById('newHeadPin').value = '';
             showToast('Profil ditambahkan!');
             loadHeadProfiles();
+        }
+
+        function showChangePinPanel(headId, hasPin) {
+            const oldPinHtml = hasPin ? '<div style="margin-bottom:8px;"><label style="font-size:12px;color:var(--text-muted);">PIN Lama</label><input type="password" id="cpOldPin" maxlength="6" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>' : '';
+            const modal = document.createElement('div');
+            modal.id = 'changePinPanelModal';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `<div style="background:var(--bg-card);border-radius:16px;padding:28px;min-width:340px;max-width:400px;">
+                <h3 style="margin:0 0 16px;font-size:16px;">Ubah PIN</h3>
+                ${oldPinHtml}
+                <div style="margin-bottom:8px;"><label style="font-size:12px;color:var(--text-muted);">PIN Baru (4 atau 6 digit, kosongkan untuk hapus)</label><input type="password" id="cpNewPin" maxlength="6" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>
+                <div style="margin-bottom:8px;"><label style="font-size:12px;color:var(--text-muted);">Konfirmasi PIN Baru</label><input type="password" id="cpConfirmPin" maxlength="6" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>
+                <div id="cpError" style="color:#e74c3c;font-size:12px;min-height:16px;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="doChangePin('${headId}', ${hasPin})" style="flex:1;padding:8px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Simpan</button>
+                    <button onclick="document.getElementById('changePinPanelModal').remove()" style="flex:1;padding:8px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">Batal</button>
+                </div>
+            </div>`;
+            document.body.appendChild(modal);
+        }
+
+        async function doChangePin(headId, hasPin) {
+            const oldPin = hasPin ? (document.getElementById('cpOldPin')?.value.trim() || '') : '';
+            const newPin = document.getElementById('cpNewPin').value.trim();
+            const confirmPin = document.getElementById('cpConfirmPin').value.trim();
+            const errEl = document.getElementById('cpError');
+            if (newPin && newPin.length !== 4 && newPin.length !== 6) { errEl.textContent = 'PIN harus 4 atau 6 digit'; return; }
+            if (newPin && !/^\d+$/.test(newPin)) { errEl.textContent = 'PIN harus angka'; return; }
+            if (newPin !== confirmPin) { errEl.textContent = 'Konfirmasi PIN tidak cocok'; return; }
+            try {
+                const resp = await fetch(`/api/stok/heads/${headId}/change-pin`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({oldPin, newPin}) });
+                if (resp.ok) {
+                    document.getElementById('changePinPanelModal').remove();
+                    showToast(newPin ? 'PIN berhasil diubah' : 'PIN berhasil dihapus');
+                    loadHeadProfiles();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    errEl.textContent = err.detail || 'Gagal mengubah PIN';
+                }
+            } catch { errEl.textContent = 'Error koneksi'; }
         }
 
         async function deleteHeadProfile(id) {

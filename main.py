@@ -1250,11 +1250,16 @@ async def stok_add_head(request: Request):
     if not name:
         raise HTTPException(400, "Name required")
     heads = await _read_heads()
+    pin = data.get("pin", "").strip()
+    if pin and len(pin) not in (4, 6):
+        raise HTTPException(400, "PIN harus 4 atau 6 digit")
+    if pin and not pin.isdigit():
+        raise HTTPException(400, "PIN harus angka")
     head = {
         "id": str(uuid.uuid4())[:8],
         "name": name,
         "avatar": data.get("avatar", ""),
-        "pin": data.get("pin", ""),
+        "pin": pin,
     }
     heads.append(head)
     await _save_heads(heads)
@@ -1273,9 +1278,35 @@ async def stok_update_head(head_id: str, request: Request):
             if "avatar" in data:
                 h["avatar"] = data["avatar"]
             if "pin" in data:
-                h["pin"] = data["pin"]
+                pin = data["pin"].strip() if data["pin"] else ""
+                if pin and len(pin) not in (4, 6):
+                    raise HTTPException(400, "PIN harus 4 atau 6 digit")
+                if pin and not pin.isdigit():
+                    raise HTTPException(400, "PIN harus angka")
+                h["pin"] = pin
             await _save_heads(heads)
             return {"ok": True, "head": h}
+    raise HTTPException(404, "Head profile not found")
+
+
+@app.post("/api/stok/heads/{head_id}/change-pin")
+async def stok_change_head_pin(head_id: str, request: Request):
+    require_admin(request)
+    data = await request.json()
+    old_pin = data.get("oldPin", "")
+    new_pin = data.get("newPin", "").strip()
+    if new_pin and len(new_pin) not in (4, 6):
+        raise HTTPException(400, "PIN baru harus 4 atau 6 digit")
+    if new_pin and not new_pin.isdigit():
+        raise HTTPException(400, "PIN baru harus angka")
+    heads = await _read_heads()
+    for h in heads:
+        if h["id"] == head_id:
+            if h.get("pin") and h["pin"] != old_pin:
+                raise HTTPException(403, "PIN lama salah")
+            h["pin"] = new_pin
+            await _save_heads(heads)
+            return {"ok": True}
     raise HTTPException(404, "Head profile not found")
 
 

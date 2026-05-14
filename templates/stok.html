@@ -227,6 +227,18 @@
         .head-pin-input input:focus { border-color: var(--primary); }
         .head-pin-error { color: var(--red); font-size: 12px; margin-bottom: 8px; min-height: 16px; }
 
+        /* Change PIN Modal */
+        .change-pin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1001; display: flex; align-items: center; justify-content: center; }
+        .change-pin-modal.hidden { display: none; }
+        .change-pin-box { background: var(--surface); border-radius: 16px; padding: 32px; text-align: center; min-width: 340px; max-width: 400px; }
+        .change-pin-box h3 { margin-bottom: 16px; }
+        .change-pin-box label { display: block; text-align: left; font-size: 12px; color: var(--text2); margin: 12px 0 4px; font-weight: 600; }
+        .change-pin-box input { width: 100%; padding: 10px 14px; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; letter-spacing: 6px; outline: none; box-sizing: border-box; }
+        .change-pin-box input:focus { border-color: var(--primary); }
+        .change-pin-box .pin-hint { font-size: 11px; color: var(--text2); margin-top: 4px; text-align: left; }
+        .change-pin-error { color: var(--red); font-size: 12px; margin: 8px 0; min-height: 16px; }
+        .change-pin-success { color: #27ae60; font-size: 12px; margin: 8px 0; min-height: 16px; }
+
         /* Head Add Modal */
         .head-add-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; }
         .head-add-modal.hidden { display: none; }
@@ -277,6 +289,28 @@
         </div>
     </div>
 
+    <!-- Change PIN Modal -->
+    <div class="change-pin-modal hidden" id="changePinModal">
+        <div class="change-pin-box">
+            <h3>Ubah PIN</h3>
+            <div id="changePinOldRow">
+                <label>PIN Lama</label>
+                <input type="password" id="changePinOld" placeholder="••••" maxlength="6">
+            </div>
+            <label>PIN Baru (4 atau 6 digit, kosongkan untuk hapus PIN)</label>
+            <input type="password" id="changePinNew" placeholder="••••••" maxlength="6">
+            <div class="pin-hint">Masukkan 4 atau 6 digit angka. Kosongkan untuk menghapus PIN.</div>
+            <label>Konfirmasi PIN Baru</label>
+            <input type="password" id="changePinConfirm" placeholder="••••••" maxlength="6">
+            <div class="change-pin-error" id="changePinError"></div>
+            <div class="change-pin-success" id="changePinSuccess"></div>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn btn-primary" onclick="submitChangePin()" style="flex:1;">Simpan</button>
+                <button class="btn btn-outline" onclick="el('changePinModal').classList.add('hidden')" style="flex:1;">Batal</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Head Add Modal -->
     <div class="head-add-modal hidden" id="headAddModal">
         <div class="head-add-box">
@@ -285,8 +319,8 @@
             <input type="text" id="headAddName" placeholder="contoh: Digital Ningrat">
             <label>URL Foto Avatar (opsional)</label>
             <input type="text" id="headAddAvatar" placeholder="https://...">
-            <label>PIN (opsional, 4 digit)</label>
-            <input type="text" id="headAddPin" placeholder="1234" maxlength="4">
+            <label>PIN (opsional, 4 atau 6 digit)</label>
+            <input type="text" id="headAddPin" placeholder="1234 / 123456" maxlength="6">
             <div class="btn-row">
                 <button class="btn btn-primary" onclick="confirmAddHead()" style="flex:1;">Simpan</button>
                 <button class="btn btn-outline" onclick="el('headAddModal').classList.add('hidden')" style="flex:1;">Batal</button>
@@ -1074,9 +1108,12 @@
             const heads = data.heads || [];
             const grid = el('headGrid');
             grid.innerHTML = heads.map(h => `
-                <div class="head-card" onclick="selectHead('${h.id}', ${h.pin ? 'true' : 'false'})">
+                <div class="head-card" onclick="selectHead('${h.id}', ${h.pin ? 'true' : 'false'}, ${h.pin ? h.pin.length : 4})">
                     <div class="head-avatar">${h.avatar ? `<img src="${h.avatar}">` : (h.name || 'P').charAt(0).toUpperCase()}</div>
                     <div class="head-card-name">${h.name}</div>
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();showChangePin('${h.id}', ${h.pin ? 'true' : 'false'})" style="margin-top:6px;font-size:11px;padding:4px 10px;">
+                        ${h.pin ? '🔒 Ubah PIN' : '🔓 Pasang PIN'}
+                    </button>
                 </div>
             `).join('') + `
                 <div class="head-card" onclick="showAddHead()">
@@ -1085,13 +1122,14 @@
                 </div>`;
         }
 
-        function selectHead(headId, hasPin) {
+        let headPinLength = 4;
+
+        function selectHead(headId, hasPin, pinLen) {
             if (hasPin) {
                 pendingHeadId = headId;
+                headPinLength = pinLen || 4;
                 el('headPinError').textContent = '';
-                el('headPinInputs').innerHTML = [0,1,2,3].map(i =>
-                    `<input type="password" maxlength="1" id="hpin${i}" oninput="headPinNext(${i})" onkeydown="headPinBack(event,${i})">`
-                ).join('');
+                renderHeadPinInputs(headPinLength);
                 el('headPinModal').classList.remove('hidden');
                 setTimeout(() => el('hpin0').focus(), 100);
             } else {
@@ -1099,9 +1137,16 @@
             }
         }
 
+        function renderHeadPinInputs(len) {
+            el('headPinInputs').innerHTML = Array.from({length: len}, (_, i) =>
+                `<input type="password" maxlength="1" id="hpin${i}" oninput="headPinNext(${i})" onkeydown="headPinBack(event,${i})">`
+            ).join('');
+        }
+
         function headPinNext(i) {
-            if (el('hpin' + i).value && i < 3) el('hpin' + (i + 1)).focus();
-            if (i === 3 && el('hpin3').value) verifyHeadPin();
+            const last = headPinLength - 1;
+            if (el('hpin' + i).value && i < last) el('hpin' + (i + 1)).focus();
+            if (i === last && el('hpin' + last).value) verifyHeadPin();
         }
 
         function headPinBack(e, i) {
@@ -1109,8 +1154,8 @@
         }
 
         async function verifyHeadPin() {
-            const pin = [0,1,2,3].map(i => el('hpin' + i).value).join('');
-            if (pin.length < 4) return;
+            const pin = Array.from({length: headPinLength}, (_, i) => el('hpin' + i).value).join('');
+            if (pin.length < headPinLength) return;
             try {
                 const resp = await fetch('/api/stok/heads/verify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({headId: pendingHeadId, pin}) });
                 if (resp.ok) {
@@ -1119,7 +1164,7 @@
                     enterHead(hid);
                 } else {
                     el('headPinError').textContent = 'PIN salah!';
-                    [0,1,2,3].forEach(i => el('hpin' + i).value = '');
+                    Array.from({length: headPinLength}, (_, i) => el('hpin' + i).value = '');
                     el('hpin0').focus();
                 }
             } catch { el('headPinError').textContent = 'Error'; }
@@ -1155,6 +1200,8 @@
             if (!name) return showToast('Masukkan nama profil');
             const avatar = el('headAddAvatar').value.trim();
             const pin = el('headAddPin').value.trim();
+            if (pin && pin.length !== 4 && pin.length !== 6) return showToast('PIN harus 4 atau 6 digit');
+            if (pin && !/^\d+$/.test(pin)) return showToast('PIN harus angka');
             await fetch('/api/stok/heads', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, avatar, pin}) });
             el('headAddModal').classList.add('hidden');
             showToast('Profil ditambahkan');
@@ -1165,6 +1212,58 @@
             currentHead = '';
             el('headScreen').classList.remove('hidden');
             loadHeadScreen();
+        }
+
+        // ═══ CHANGE PIN ═══
+        let changePinHeadId = '';
+
+        function showChangePin(headId, hasPin) {
+            changePinHeadId = headId;
+            el('changePinOld').value = '';
+            el('changePinNew').value = '';
+            el('changePinConfirm').value = '';
+            el('changePinError').textContent = '';
+            el('changePinSuccess').textContent = '';
+            el('changePinOldRow').style.display = hasPin ? '' : 'none';
+            el('changePinModal').classList.remove('hidden');
+            setTimeout(() => el(hasPin ? 'changePinOld' : 'changePinNew').focus(), 100);
+        }
+
+        async function submitChangePin() {
+            const oldPin = el('changePinOld').value.trim();
+            const newPin = el('changePinNew').value.trim();
+            const confirm = el('changePinConfirm').value.trim();
+            el('changePinError').textContent = '';
+            el('changePinSuccess').textContent = '';
+
+            if (newPin && newPin.length !== 4 && newPin.length !== 6) {
+                el('changePinError').textContent = 'PIN harus 4 atau 6 digit';
+                return;
+            }
+            if (newPin && !/^\d+$/.test(newPin)) {
+                el('changePinError').textContent = 'PIN harus angka';
+                return;
+            }
+            if (newPin !== confirm) {
+                el('changePinError').textContent = 'Konfirmasi PIN tidak cocok';
+                return;
+            }
+            try {
+                const resp = await fetch(`/api/stok/heads/${changePinHeadId}/change-pin`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({oldPin, newPin})
+                });
+                if (resp.ok) {
+                    showToast(newPin ? 'PIN berhasil diubah' : 'PIN berhasil dihapus');
+                    el('changePinModal').classList.add('hidden');
+                    loadHeadScreen();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    el('changePinError').textContent = err.detail || 'Gagal mengubah PIN';
+                }
+            } catch {
+                el('changePinError').textContent = 'Error koneksi';
+            }
         }
 
         // ═══ INIT ═══
