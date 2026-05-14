@@ -197,6 +197,45 @@
         .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 999; transition: opacity 0.3s; }
         .toast.hidden { opacity: 0; pointer-events: none; }
 
+        /* ─── Head Profile Selection Screen ─── */
+        .head-screen { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .head-screen.hidden { display: none; }
+        .head-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+        .head-brand-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary), #a29bfe); border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+        .head-brand-icon svg { color: #fff; width: 28px; height: 28px; }
+        .head-brand h1 { font-size: 28px; font-weight: 800; letter-spacing: 1px; }
+        .head-brand h1 span { color: var(--primary); }
+        .head-subtitle { color: var(--text2); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; }
+        .head-grid { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+        .head-card { cursor: pointer; text-align: center; transition: transform 0.2s; width: 130px; }
+        .head-card:hover { transform: scale(1.08); }
+        .head-avatar { width: 110px; height: 110px; border-radius: 16px; overflow: hidden; margin: 0 auto 10px; background: linear-gradient(135deg, var(--primary), #a29bfe); display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: 800; color: #fff; }
+        .head-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .head-card-name { font-size: 14px; font-weight: 700; color: var(--text); }
+        .head-add { border: 2px dashed var(--border); border-radius: 16px; width: 110px; height: 110px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s; }
+        .head-add:hover { border-color: var(--primary); }
+        .head-add svg { width: 36px; height: 36px; color: var(--text2); }
+
+        /* Head PIN Modal */
+        .head-pin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .head-pin-modal.hidden { display: none; }
+        .head-pin-box { background: var(--surface); border-radius: 16px; padding: 32px; text-align: center; min-width: 320px; }
+        .head-pin-box h3 { margin-bottom: 8px; }
+        .head-pin-box p { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+        .head-pin-input { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+        .head-pin-input input { width: 48px; height: 56px; text-align: center; font-size: 22px; font-weight: 700; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; color: var(--text); outline: none; }
+        .head-pin-input input:focus { border-color: var(--primary); }
+        .head-pin-error { color: var(--red); font-size: 12px; margin-bottom: 8px; min-height: 16px; }
+
+        /* Head Add Modal */
+        .head-add-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .head-add-modal.hidden { display: none; }
+        .head-add-box { background: var(--surface); border-radius: 16px; padding: 32px; min-width: 360px; }
+        .head-add-box h3 { margin-bottom: 16px; }
+        .head-add-box label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; margin-top: 12px; }
+        .head-add-box input { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; }
+        .head-add-box .btn-row { display: flex; gap: 8px; margin-top: 20px; }
+
         @media (max-width: 768px) {
             .sb { width: 60px; }
             .sb-name, .sb-label, .sb-nav li a span, .sb-svc-item span, .sb-bottom a span { display: none; }
@@ -207,10 +246,54 @@
             .topbar, .content { padding-left: 16px; padding-right: 16px; }
             .cards-row { grid-template-columns: 1fr; }
             .settings-grid { grid-template-columns: 1fr; }
+            .head-avatar { width: 90px; height: 90px; font-size: 32px; }
+            .head-add { width: 90px; height: 90px; }
+            .head-card { width: 110px; }
         }
     </style>
 </head>
 <body>
+    <!-- ═══ HEAD PROFILE SELECTION SCREEN ═══ -->
+    <div class="head-screen" id="headScreen">
+        <div class="head-brand">
+            <div class="head-brand-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </div>
+            <h1>MANAGEMENT <span>STORE</span></h1>
+        </div>
+        <div class="head-subtitle">Silakan pilih profil untuk melanjutkan</div>
+        <div class="head-grid" id="headGrid"></div>
+    </div>
+
+    <!-- Head PIN Modal -->
+    <div class="head-pin-modal hidden" id="headPinModal">
+        <div class="head-pin-box">
+            <h3 id="headPinTitle">Masukkan PIN</h3>
+            <p id="headPinDesc">Masukkan PIN untuk melanjutkan</p>
+            <div class="head-pin-input" id="headPinInputs"></div>
+            <div class="head-pin-error" id="headPinError"></div>
+            <button class="btn btn-primary" onclick="verifyHeadPin()" style="width:100%;">Masuk</button>
+            <button class="btn btn-outline" onclick="closeHeadPin()" style="width:100%;margin-top:8px;">Batal</button>
+        </div>
+    </div>
+
+    <!-- Head Add Modal -->
+    <div class="head-add-modal hidden" id="headAddModal">
+        <div class="head-add-box">
+            <h3>Tambah Profil</h3>
+            <label>Nama Profil</label>
+            <input type="text" id="headAddName" placeholder="contoh: Digital Ningrat">
+            <label>URL Foto Avatar (opsional)</label>
+            <input type="text" id="headAddAvatar" placeholder="https://...">
+            <label>PIN (opsional, 4 digit)</label>
+            <input type="text" id="headAddPin" placeholder="1234" maxlength="4">
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="confirmAddHead()" style="flex:1;">Simpan</button>
+                <button class="btn btn-outline" onclick="el('headAddModal').classList.add('hidden')" style="flex:1;">Batal</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar -->
     <aside class="sb">
         <div class="sb-brand">
@@ -243,6 +326,10 @@
             <a href="#" onclick="switchView('settings')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 <span>Pengaturan</span>
+            </a>
+            <a href="#" onclick="backToHeadScreen()" class="logout" id="btnBackHead" style="display:none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+                <span>Ganti Profil</span>
             </a>
             <a href="/panel" class="logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -528,8 +615,11 @@
         let sellTarget = null;
         let pinTarget = null;
         let historyData = [];
+        let currentHead = '';
+        let pendingHeadId = '';
 
         const el = id => document.getElementById(id);
+        const hq = () => currentHead ? `head=${encodeURIComponent(currentHead)}` : '';
 
         function showToast(msg) {
             const t = el('toast');
@@ -559,7 +649,9 @@
 
         // ═══ DASHBOARD ═══
         async function loadDashboard(view) {
-            const url = view ? `/api/stok/dashboard?view=${encodeURIComponent(view)}` : '/api/stok/dashboard';
+            const params = [hq()];
+            if (view) params.push(`view=${encodeURIComponent(view)}`);
+            const url = `/api/stok/dashboard?${params.filter(Boolean).join('&')}`;
             const resp = await fetch(url);
             const data = await resp.json();
 
@@ -667,7 +759,7 @@
         async function confirmAddLayanan() {
             const name = el('layananModalInput').value.trim();
             if (!name) return;
-            const resp = await fetch('/api/stok/layanan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            const resp = await fetch('/api/stok/layanan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, head: currentHead}) });
             if (resp.ok) { el('layananModal').classList.add('hidden'); showToast('Layanan ditambahkan'); loadDashboard(name); }
             else { const e = await resp.json(); showToast(e.detail || 'Error'); }
         }
@@ -675,14 +767,14 @@
         async function confirmRenameLayanan(oldName) {
             const newName = el('layananModalInput').value.trim();
             if (!newName) return;
-            const resp = await fetch('/api/stok/layanan/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({old: oldName, new: newName}) });
+            const resp = await fetch('/api/stok/layanan/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({old: oldName, new: newName, head: currentHead}) });
             if (resp.ok) { el('layananModal').classList.add('hidden'); showToast('Layanan di-rename'); loadDashboard(newName); if (document.querySelector('.view.active').id === 'view-settings') loadSettings(); }
             else { const e = await resp.json(); showToast(e.detail || 'Error'); }
         }
 
         async function deleteLayanan(name) {
             if (!confirm(`Hapus layanan "${name}" beserta semua datanya?`)) return;
-            await fetch(`/api/stok/layanan/${name}`, { method: 'DELETE' });
+            await fetch(`/api/stok/layanan/${name}?${hq()}`, { method: 'DELETE' });
             showToast('Layanan dihapus');
             loadDashboard();
             if (document.querySelector('.view.active').id === 'view-settings') loadSettings();
@@ -695,7 +787,7 @@
             const durasi = el('importDays').value;
             const profileCount = el('importProfiles').value;
             if (!bulkData) return showToast('Masukkan data akun');
-            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: currentView, bulkData, durasi, profileCount}) });
+            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: currentView, bulkData, durasi, profileCount, head: currentHead}) });
             const data = await resp.json();
             showToast(`${data.imported} akun berhasil diimport`);
             el('importData').value = '';
@@ -723,7 +815,7 @@
         });
 
         async function loadBuyerSuggestions(dlId) {
-            const resp = await fetch('/api/stok/customers');
+            const resp = await fetch(`/api/stok/customers?${hq()}`);
             const customers = await resp.json();
             el(dlId).innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
         }
@@ -738,6 +830,7 @@
                 if (!r) return showToast('Pilih slot');
                 body.slotId = parseInt(r.value);
             }
+            body.head = currentHead;
             await fetch(`/api/stok/sell/${currentView}/${sellTarget}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             closeSellModal();
             showToast('Akun berhasil dijual');
@@ -748,7 +841,7 @@
 
         async function deleteAccount(accId) {
             if (!confirm('Hapus akun ini?')) return;
-            await fetch(`/api/stok/account/${currentView}/${accId}`, { method: 'DELETE' });
+            await fetch(`/api/stok/account/${currentView}/${accId}?${hq()}`, { method: 'DELETE' });
             showToast('Akun dihapus');
             loadDashboard(currentView);
         }
@@ -758,7 +851,7 @@
             const pembeli = el('bulkBuyer').value.trim();
             if (!ids.length) return showToast('Pilih akun');
             if (!pembeli) return showToast('Masukkan nama pembeli');
-            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'sell', layanan: currentView, ids, pembeli}) });
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'sell', layanan: currentView, ids, pembeli, head: currentHead}) });
             showToast(`${ids.length} akun dijual`);
             loadDashboard(currentView);
         }
@@ -767,7 +860,7 @@
             const ids = [...document.querySelectorAll('.row-cb:checked')].map(cb => cb.value);
             if (!ids.length) return showToast('Pilih akun');
             if (!confirm(`Hapus ${ids.length} akun?`)) return;
-            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', layanan: currentView, ids}) });
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', layanan: currentView, ids, head: currentHead}) });
             showToast(`${ids.length} akun dihapus`);
             loadDashboard(currentView);
         }
@@ -795,7 +888,7 @@
             if (!pinTarget) return;
             try {
                 const resp = await fetch(`/api/stok/verify-pin/${currentView}/${pinTarget.accId}/${pinTarget.profileId}`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin: el('pinInput').value})
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin: el('pinInput').value, head: currentHead})
                 });
                 if (resp.ok) {
                     const data = await resp.json();
@@ -857,12 +950,13 @@
 
         async function saveProfile(accId, pid) {
             await fetch(`/api/stok/profile/${currentView}/${accId}/${pid}`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method: 'POST', headers: {'Content-Type':'application/json'}, 
                 body: JSON.stringify({
                     profileName: el(`pn_${accId}_${pid}`).value,
                     buyerName: el(`pb_${accId}_${pid}`).value,
                     pin: el(`pp_${accId}_${pid}`).value,
-                    avatar: el(`pa_${accId}_${pid}`).value
+                    avatar: el(`pa_${accId}_${pid}`).value,
+                    head: currentHead
                 })
             });
             showToast('Profile disimpan');
@@ -872,7 +966,7 @@
 
         // ═══ HISTORY ═══
         async function loadHistory() {
-            const resp = await fetch('/api/stok/history');
+            const resp = await fetch(`/api/stok/history?${hq()}`);
             const data = await resp.json();
             historyData = data.history;
             renderHistory(historyData);
@@ -911,7 +1005,7 @@
 
         // ═══ CUSTOMER ═══
         async function loadCustomerSuggestions() {
-            const resp = await fetch('/api/stok/customers');
+            const resp = await fetch(`/api/stok/customers?${hq()}`);
             const customers = await resp.json();
             el('custSuggest').innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
         }
@@ -919,7 +1013,7 @@
         async function checkCustomer() {
             const name = el('custName').value.trim();
             if (!name) return showToast('Masukkan nama customer');
-            const resp = await fetch(`/api/stok/customer-check?name=${encodeURIComponent(name)}`);
+            const resp = await fetch(`/api/stok/customer-check?name=${encodeURIComponent(name)}&${hq()}`);
             const data = await resp.json();
             if (!data.purchases.length) {
                 el('custResult').innerHTML = `<div class="empty-state">
@@ -941,7 +1035,7 @@
 
         // ═══ SETTINGS ═══
         async function loadSettings() {
-            const resp = await fetch('/api/stok/settings');
+            const resp = await fetch(`/api/stok/settings?${hq()}`);
             const data = await resp.json();
             el('setStoreName').value = data.storeName || '';
             el('setStoreTag').value = data.storeTag || '';
@@ -963,7 +1057,7 @@
         async function saveSettings() {
             const storeName = el('setStoreName').value.trim();
             const storeTag = el('setStoreTag').value.trim();
-            await fetch('/api/stok/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({storeName, storeTag}) });
+            await fetch('/api/stok/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({storeName, storeTag, head: currentHead}) });
             showToast('Pengaturan disimpan');
             updateBranding(storeName, storeTag);
         }
@@ -973,14 +1067,122 @@
             document.title = `${name || 'Stock'} | ${tag || 'Management'}`;
         }
 
-        // ═══ INIT ═══
-        async function init() {
+        // ═══ HEAD PROFILE MANAGEMENT ═══
+        async function loadHeadScreen() {
+            const resp = await fetch('/api/stok/heads');
+            const data = await resp.json();
+            const heads = data.heads || [];
+            const grid = el('headGrid');
+            grid.innerHTML = heads.map(h => `
+                <div class="head-card" onclick="selectHead('${h.id}', ${h.pin ? 'true' : 'false'})">
+                    <div class="head-avatar">${h.avatar ? `<img src="${h.avatar}">` : (h.name || 'P').charAt(0).toUpperCase()}</div>
+                    <div class="head-card-name">${h.name}</div>
+                </div>
+            `).join('') + `
+                <div class="head-card" onclick="showAddHead()">
+                    <div class="head-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                    <div class="head-card-name" style="color:var(--text2);">Tambah Profil</div>
+                </div>`;
+        }
+
+        function selectHead(headId, hasPin) {
+            if (hasPin) {
+                pendingHeadId = headId;
+                el('headPinError').textContent = '';
+                el('headPinInputs').innerHTML = [0,1,2,3].map(i =>
+                    `<input type="password" maxlength="1" id="hpin${i}" oninput="headPinNext(${i})" onkeydown="headPinBack(event,${i})">`
+                ).join('');
+                el('headPinModal').classList.remove('hidden');
+                setTimeout(() => el('hpin0').focus(), 100);
+            } else {
+                enterHead(headId);
+            }
+        }
+
+        function headPinNext(i) {
+            if (el('hpin' + i).value && i < 3) el('hpin' + (i + 1)).focus();
+            if (i === 3 && el('hpin3').value) verifyHeadPin();
+        }
+
+        function headPinBack(e, i) {
+            if (e.key === 'Backspace' && !el('hpin' + i).value && i > 0) el('hpin' + (i - 1)).focus();
+        }
+
+        async function verifyHeadPin() {
+            const pin = [0,1,2,3].map(i => el('hpin' + i).value).join('');
+            if (pin.length < 4) return;
             try {
-                const resp = await fetch('/api/stok/settings');
+                const resp = await fetch('/api/stok/heads/verify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({headId: pendingHeadId, pin}) });
+                if (resp.ok) {
+                    const hid = pendingHeadId;
+                    closeHeadPin();
+                    enterHead(hid);
+                } else {
+                    el('headPinError').textContent = 'PIN salah!';
+                    [0,1,2,3].forEach(i => el('hpin' + i).value = '');
+                    el('hpin0').focus();
+                }
+            } catch { el('headPinError').textContent = 'Error'; }
+        }
+
+        function closeHeadPin() {
+            el('headPinModal').classList.add('hidden');
+            pendingHeadId = '';
+        }
+
+        async function enterHead(headId) {
+            currentHead = headId;
+            el('headScreen').classList.add('hidden');
+            el('btnBackHead').style.display = '';
+            try {
+                const resp = await fetch(`/api/stok/settings?${hq()}`);
                 const data = await resp.json();
                 updateBranding(data.storeName, data.storeTag);
             } catch {}
             loadDashboard();
+        }
+
+        function showAddHead() {
+            el('headAddName').value = '';
+            el('headAddAvatar').value = '';
+            el('headAddPin').value = '';
+            el('headAddModal').classList.remove('hidden');
+            el('headAddName').focus();
+        }
+
+        async function confirmAddHead() {
+            const name = el('headAddName').value.trim();
+            if (!name) return showToast('Masukkan nama profil');
+            const avatar = el('headAddAvatar').value.trim();
+            const pin = el('headAddPin').value.trim();
+            await fetch('/api/stok/heads', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, avatar, pin}) });
+            el('headAddModal').classList.add('hidden');
+            showToast('Profil ditambahkan');
+            loadHeadScreen();
+        }
+
+        function backToHeadScreen() {
+            currentHead = '';
+            el('headScreen').classList.remove('hidden');
+            loadHeadScreen();
+        }
+
+        // ═══ INIT ═══
+        async function init() {
+            const resp = await fetch('/api/stok/heads');
+            const data = await resp.json();
+            const heads = data.heads || [];
+            if (heads.length === 0) {
+                el('headScreen').classList.add('hidden');
+                try {
+                    const sr = await fetch(`/api/stok/settings?${hq()}`);
+                    const sd = await sr.json();
+                    updateBranding(sd.storeName, sd.storeTag);
+                } catch {}
+                loadDashboard();
+            } else {
+                loadHeadScreen();
+            }
         }
 
         init();

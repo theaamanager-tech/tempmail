@@ -410,16 +410,22 @@ Response: {
 
             <!-- Stock Management is now a separate page at /stok -->
 
-            <!-- Profil & PIN Tab -->
+            <!-- Profil & PIN Tab (Head Profiles) -->
             <div class="tab-content" id="tab-profiles">
                 <div class="form-card">
-                    <h3 style="margin:0 0 8px;">Pilih Layanan</h3>
-                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 12px;">Pilih layanan untuk melihat dan mengatur profil akun.</p>
-                    <select id="profileLayanan" onchange="loadProfileAccounts()" style="width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;">
-                        <option value="">-- Pilih Layanan --</option>
-                    </select>
+                    <h3 style="margin:0 0 8px;">Kelola Profil Kepala</h3>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px;">Profil kepala seperti Netflix — setiap profil punya data terpisah (layanan, akun, dll). Kelola di sini atau langsung di halaman Stock Manager.</p>
+                    <div id="headProfilesList"></div>
+                    <div style="margin-top:16px;padding:16px;border:2px dashed var(--border);border-radius:12px;">
+                        <h4 style="margin:0 0 12px;">Tambah Profil Baru</h4>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div><label style="font-size:12px;color:var(--text-muted);">Nama Profil</label><input type="text" id="newHeadName" placeholder="Digital Ningrat" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;"></div>
+                            <div><label style="font-size:12px;color:var(--text-muted);">PIN (4 digit, opsional)</label><input type="text" id="newHeadPin" placeholder="1234" maxlength="4" style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;letter-spacing:4px;"></div>
+                        </div>
+                        <div style="margin-top:8px;"><label style="font-size:12px;color:var(--text-muted);">URL Avatar (opsional)</label><input type="text" id="newHeadAvatar" placeholder="https://..." style="width:100%;padding:8px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;"></div>
+                        <button onclick="addHeadProfile()" style="margin-top:12px;padding:8px 20px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Tambah Profil</button>
+                    </div>
                 </div>
-                <div id="profileAccountsList"></div>
             </div>
 
         </main>
@@ -450,59 +456,46 @@ Response: {
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
             document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
             document.getElementById('statsRow').style.display = mainTabs.includes(tab) ? '' : 'none';
-            if (tab === 'profiles') loadProfileLayanan();
+            if (tab === 'profiles') loadHeadProfiles();
         }
 
-        async function loadProfileLayanan() {
-            const resp = await fetch('/api/stok/layanan');
+        async function loadHeadProfiles() {
+            const resp = await fetch('/api/stok/heads');
             const data = await resp.json();
-            const sel = document.getElementById('profileLayanan');
-            const cur = sel.value;
-            sel.innerHTML = '<option value="">-- Pilih Layanan --</option>' +
-                (data.layanan || []).map(l => `<option value="${l}" ${l === cur ? 'selected' : ''}>${l.toUpperCase()}</option>`).join('');
-            if (cur && (data.layanan || []).includes(cur)) loadProfileAccounts();
-        }
-
-        async function loadProfileAccounts() {
-            const layanan = document.getElementById('profileLayanan').value;
-            const container = document.getElementById('profileAccountsList');
-            if (!layanan) { container.innerHTML = ''; return; }
-            const resp = await fetch(`/api/stok/dashboard?view=${encodeURIComponent(layanan)}`);
-            const data = await resp.json();
-            const accounts = data.accounts || [];
-            if (!accounts.length) {
-                container.innerHTML = '<div class="form-card"><p style="color:var(--text-muted);text-align:center;">Tidak ada akun di layanan ini. Import akun di Stock Manager terlebih dahulu.</p></div>';
+            const heads = data.heads || [];
+            const container = document.getElementById('headProfilesList');
+            if (!heads.length) {
+                container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:16px;">Belum ada profil kepala. Tambahkan profil di bawah.</p>';
                 return;
             }
-            container.innerHTML = accounts.map(acc => {
-                const profiles = acc.profiles || [];
-                return `<div class="form-card" style="margin-top:12px;">
-                    <h3 style="margin:0 0 4px;font-size:14px;">${acc.email}</h3>
-                    <p style="color:var(--text-muted);font-size:12px;margin:0 0 12px;">Expired: ${acc.expiryDate ? new Date(acc.expiryDate).toLocaleDateString('id-ID') : '-'}</p>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
-                    ${profiles.map(p => `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
-                        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#a29bfe);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${(p.name || 'P')[0].toUpperCase()}</div>
-                        <div style="font-weight:600;font-size:13px;margin-bottom:2px;">${p.name || 'PROFILE ' + p.id}</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${p.user ? '👤 ' + p.user : 'Belum dijual'}</div>
-                        <div style="display:flex;flex-direction:column;gap:6px;">
-                            <input type="text" placeholder="Nama Profil" value="${p.name || ''}" id="pn_${acc.id}_${p.id}" style="padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;">
-                            <input type="text" placeholder="PIN (4 digit)" value="${p.pin || ''}" maxlength="4" id="pp_${acc.id}_${p.id}" style="padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;text-align:center;letter-spacing:4px;">
-                            <button onclick="saveProfile('${layanan}','${acc.id}',${p.id})" style="padding:6px;background:#6c5ce7;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Simpan</button>
-                        </div>
-                    </div>`).join('')}
-                    </div>
-                </div>`;
-            }).join('');
+            container.innerHTML = heads.map(h => `<div style="display:flex;align-items:center;gap:14px;padding:14px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;">
+                <div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;">${h.avatar ? `<img src="${h.avatar}" style="width:100%;height:100%;object-fit:cover;">` : (h.name || 'P')[0].toUpperCase()}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-size:14px;">${h.name}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${h.pin ? 'PIN: ****' : 'Tanpa PIN'}</div>
+                </div>
+                <button onclick="deleteHeadProfile('${h.id}')" style="padding:6px 12px;background:var(--red,#e74c3c);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Hapus</button>
+            </div>`).join('');
         }
 
-        async function saveProfile(layanan, accId, profileId) {
-            const name = document.getElementById(`pn_${accId}_${profileId}`).value;
-            const pin = document.getElementById(`pp_${accId}_${profileId}`).value;
-            await fetch(`/api/stok/profile/${layanan}/${accId}/${profileId}`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({profileName: name, pin: pin})
-            });
-            showToast('Profil disimpan!');
+        async function addHeadProfile() {
+            const name = document.getElementById('newHeadName').value.trim();
+            if (!name) return showToast('Masukkan nama profil');
+            const avatar = document.getElementById('newHeadAvatar').value.trim();
+            const pin = document.getElementById('newHeadPin').value.trim();
+            await fetch('/api/stok/heads', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, avatar, pin}) });
+            document.getElementById('newHeadName').value = '';
+            document.getElementById('newHeadAvatar').value = '';
+            document.getElementById('newHeadPin').value = '';
+            showToast('Profil ditambahkan!');
+            loadHeadProfiles();
+        }
+
+        async function deleteHeadProfile(id) {
+            if (!confirm('Hapus profil ini? Semua data di dalam profil akan hilang.')) return;
+            await fetch(`/api/stok/heads/${id}`, { method: 'DELETE' });
+            showToast('Profil dihapus');
+            loadHeadProfiles();
         }
 
 
