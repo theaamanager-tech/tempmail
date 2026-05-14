@@ -306,7 +306,7 @@
             <div class="change-pin-success" id="changePinSuccess"></div>
             <div style="display:flex;gap:8px;margin-top:16px;">
                 <button class="btn btn-primary" onclick="submitChangePin()" style="flex:1;">Simpan</button>
-                <button class="btn btn-outline" onclick="el('changePinModal').classList.add('hidden')" style="flex:1;">Batal</button>
+                <button class="btn btn-outline" onclick="el('changePinModal').classList.add('hidden');el('changePinModal').style.display='none'" style="flex:1;">Batal</button>
             </div>
         </div>
     </div>
@@ -1225,14 +1225,16 @@
             el('changePinError').textContent = '';
             el('changePinSuccess').textContent = '';
             el('changePinOldRow').style.display = hasPin ? '' : 'none';
-            el('changePinModal').classList.remove('hidden');
+            const modal = el('changePinModal');
+            modal.style.display = '';
+            modal.classList.remove('hidden');
             setTimeout(() => el(hasPin ? 'changePinOld' : 'changePinNew').focus(), 100);
         }
 
         async function submitChangePin() {
             const oldPin = el('changePinOld').value.trim();
             const newPin = el('changePinNew').value.trim();
-            const confirm = el('changePinConfirm').value.trim();
+            const confirmPin = el('changePinConfirm').value.trim();
             el('changePinError').textContent = '';
             el('changePinSuccess').textContent = '';
 
@@ -1244,18 +1246,20 @@
                 el('changePinError').textContent = 'PIN harus angka';
                 return;
             }
-            if (newPin !== confirm) {
+            if (newPin !== confirmPin) {
                 el('changePinError').textContent = 'Konfirmasi PIN tidak cocok';
                 return;
             }
             try {
+                const modal = el('changePinModal');
                 const resp = await fetch(`/api/stok/heads/${changePinHeadId}/change-pin`, {
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({oldPin, newPin})
                 });
                 if (resp.ok) {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
                     showToast(newPin ? 'PIN berhasil diubah' : 'PIN berhasil dihapus');
-                    el('changePinModal').classList.add('hidden');
                     loadHeadScreen();
                 } else {
                     const err = await resp.json().catch(() => ({}));
