@@ -488,6 +488,7 @@ body.dark {
     left: 0;
     bottom: 0;
     z-index: 50;
+    overflow-y: auto;
 }
 .sidebar-header {
     padding: 20px;
@@ -872,6 +873,182 @@ body.dark {
     border-radius: 4px;
     font-size: 12px;
     margin: 1px 2px;
+}
+
+/* ─── Password Generator ───────────────────────────────────── */
+.pw-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.pw-display {
+    display: block;
+    font-size: 14px;
+    color: var(--primary);
+    word-break: break-all;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+}
+.pw-strength {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-bottom: 2px;
+    overflow: hidden;
+}
+.pw-strength-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+}
+
+/* ─── Fake ID ──────────────────────────────────────────────── */
+.fake-id-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    margin-top: 12px;
+}
+.fakeid-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+.fakeid-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+.fakeid-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+.fakeid-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* ─── Notepad ──────────────────────────────────────────────── */
+.notepad-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.notepad-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.notepad-toolbar-right {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.note-title-input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    min-width: 120px;
+}
+.note-title-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.12);
+}
+#noteSelect {
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    min-width: 140px;
+}
+#noteSelect:focus { border-color: var(--primary); }
+.notepad-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+.notepad-editor {
+    width: 100%;
+    min-height: 420px;
+    padding: 20px;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    tab-size: 4;
+}
+.notepad-statusbar {
+    display: flex;
+    gap: 16px;
+    padding: 8px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text2);
+}
+.note-autosave {
+    margin-left: auto;
+    color: var(--scan);
+    font-weight: 600;
 }
 
 /* ─── Responsive ───────────────────────────────────────────── */
