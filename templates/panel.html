@@ -62,6 +62,21 @@
                     Notepad
                 </a>
             </nav>
+            <div class="sidebar-section-label">STOCK MANAGEMENT</div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" data-tab="stok-dashboard" onclick="switchTab('stok-dashboard')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+                    Dashboard Stok
+                </a>
+                <a href="#" class="nav-item" data-tab="stok-history" onclick="switchTab('stok-history')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Rekap Penjualan
+                </a>
+                <a href="#" class="nav-item" data-tab="stok-customer" onclick="switchTab('stok-customer')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Cek Customer
+                </a>
+            </nav>
             <div class="sidebar-footer">
                 <a href="/admin/logout" class="nav-item logout">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
@@ -396,7 +411,148 @@ Response: {
                     <div id="settingsMsg" class="toast hidden"></div>
                 </div>
             </div>
+
+            <!-- Stock Dashboard Tab -->
+            <div class="tab-content" id="tab-stok-dashboard">
+                <div class="stok-top-bar">
+                    <div class="stok-layanan-controls">
+                        <select id="stokLayananSelect" onchange="stokLoadDashboard(this.value)"></select>
+                        <button class="btn-sm btn-copy" onclick="stokShowAddLayanan()">+ Add</button>
+                        <button class="btn-sm btn-scan-link" onclick="stokShowRenameLayanan()">Rename</button>
+                        <button class="btn-sm btn-danger" onclick="stokDeleteLayanan()">Delete</button>
+                    </div>
+                    <div class="stok-alert-btn" id="stokAlertBtn" onclick="toggleStokAlerts()" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                        <span class="stok-alert-badge" id="stokAlertBadge">0</span>
+                    </div>
+                </div>
+                <div id="stokAlertPanel" class="stok-alert-panel hidden"></div>
+
+                <div class="stok-summary" id="stokSummary"></div>
+
+                <div class="form-card" id="stokImportCard">
+                    <h3 style="margin:0 0 12px;color:var(--text);">Import Akun Massal</h3>
+                    <div class="form-group">
+                        <label>Format: email|password (satu per baris)</label>
+                        <textarea id="stokBulkData" rows="4" style="width:100%;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:monospace;font-size:13px;resize:vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Durasi (hari)</label>
+                        <input type="number" id="stokDurasi" value="30" min="1" max="365">
+                    </div>
+                    <button class="btn-primary" onclick="stokBulkImport()">Import</button>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="stokSearch" placeholder="Search accounts..." oninput="stokFilterTable()">
+                </div>
+                <div class="stok-inventory" id="stokInventory"></div>
+            </div>
+
+            <!-- Stock History Tab -->
+            <div class="tab-content" id="tab-stok-history">
+                <div class="search-bar">
+                    <input type="text" id="stokHistorySearch" placeholder="Search sales history..." oninput="stokFilterHistory()">
+                </div>
+                <div class="accounts-table" id="stokHistoryTable">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Layanan</th>
+                                <th>Email</th>
+                                <th>Tipe</th>
+                                <th>Pembeli</th>
+                                <th>Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stokHistoryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Stock Customer Check Tab -->
+            <div class="tab-content" id="tab-stok-customer">
+                <div class="form-card">
+                    <div class="form-group">
+                        <label>Nama Customer</label>
+                        <div class="input-row">
+                            <input type="text" id="stokCustName" placeholder="Masukkan nama customer..." list="stokCustSuggest">
+                            <datalist id="stokCustSuggest"></datalist>
+                            <button class="btn-primary" onclick="stokCheckCustomer()">Cek</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="stokCustResult" class="results-section hidden">
+                    <h2>Riwayat Pembelian</h2>
+                    <div class="accounts-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Layanan</th>
+                                    <th>Email</th>
+                                    <th>Tipe</th>
+                                    <th>Tanggal</th>
+                                    <th>Sisa Garansi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stokCustBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
+    </div>
+
+    <!-- Stock Sell Modal -->
+    <div id="stokSellModal" class="stok-modal hidden">
+        <div class="stok-modal-content">
+            <h3>Jual Akun</h3>
+            <div class="form-group">
+                <label>Nama Pembeli</label>
+                <input type="text" id="stokSellBuyer" placeholder="Nama pembeli..." list="stokBuyerSuggest">
+                <datalist id="stokBuyerSuggest"></datalist>
+            </div>
+            <div class="form-group">
+                <label>Tipe Penjualan</label>
+                <div class="segmented-control">
+                    <input type="radio" name="stokSellType" id="sellFull" value="full" checked>
+                    <label for="sellFull" class="segment">Full Account</label>
+                    <input type="radio" name="stokSellType" id="sellSlot" value="slot">
+                    <label for="sellSlot" class="segment">Per Slot</label>
+                </div>
+            </div>
+            <div id="stokSlotPicker" class="hidden" style="margin-bottom:12px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-sm btn-danger" onclick="closeStokModal()">Batal</button>
+                <button class="btn-primary" onclick="stokConfirmSell()">Jual</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Profile Modal -->
+    <div id="stokProfileModal" class="stok-modal hidden">
+        <div class="stok-modal-content">
+            <h3>Manage Profiles</h3>
+            <div id="stokProfileList"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+                <button class="btn-sm btn-danger" onclick="closeProfileModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Layanan Modal -->
+    <div id="stokAddLayananModal" class="stok-modal hidden">
+        <div class="stok-modal-content">
+            <h3 id="stokLayananModalTitle">Tambah Layanan</h3>
+            <div class="form-group">
+                <label id="stokLayananModalLabel">Nama Layanan</label>
+                <input type="text" id="stokLayananModalInput" placeholder="contoh: netflix">
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn-sm btn-danger" onclick="document.getElementById('stokAddLayananModal').classList.add('hidden')">Batal</button>
+                <button class="btn-primary" id="stokLayananModalBtn" onclick="stokConfirmAddLayanan()">Tambah</button>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast-global hidden"></div>
@@ -411,10 +567,14 @@ Response: {
             settings: 'Settings',
             password: 'Password Generator',
             fakeid: 'Fake ID Generator',
-            notepad: 'Notepad'
+            notepad: 'Notepad',
+            'stok-dashboard': 'Dashboard Stok',
+            'stok-history': 'Rekap Penjualan',
+            'stok-customer': 'Cek Customer'
         };
 
         const mainTabs = ['generate', 'manual', 'accounts'];
+        const stokTabs = ['stok-dashboard', 'stok-history', 'stok-customer'];
 
         function switchTab(tab) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -423,6 +583,9 @@ Response: {
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
             document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
             document.getElementById('statsRow').style.display = mainTabs.includes(tab) ? '' : 'none';
+            if (tab === 'stok-dashboard') stokLoadDashboard();
+            if (tab === 'stok-history') stokLoadHistory();
+            if (tab === 'stok-customer') stokLoadCustomerSuggestions();
         }
 
 
@@ -1178,6 +1341,356 @@ Response: {
             }
             refreshNoteList();
         });
+
+        // ─── Stock Management ─────────────────────────────────────
+        let stokCurrentView = '';
+        let stokAccounts = [];
+        let stokSellTarget = null;
+        let stokHistoryData = [];
+
+        async function stokLoadDashboard(view) {
+            const url = view ? `/api/stok/dashboard?view=${encodeURIComponent(view)}` : '/api/stok/dashboard';
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            const sel = document.getElementById('stokLayananSelect');
+            sel.innerHTML = data.layananList.length ? data.layananList.map(l =>
+                `<option value="${l}" ${l === data.currentView ? 'selected' : ''}>${l.toUpperCase()}</option>`
+            ).join('') : '<option value="">-- No services --</option>';
+
+            stokCurrentView = data.currentView;
+            stokAccounts = data.accounts;
+
+            // Summary cards
+            const sumEl = document.getElementById('stokSummary');
+            let sumHtml = '<div class="stok-summary-grid">';
+            for (const [lay, info] of Object.entries(data.summary)) {
+                sumHtml += `<div class="stok-summary-card">
+                    <div class="stok-summary-name">${lay.toUpperCase()}</div>
+                    <div class="stok-summary-stats">
+                        <span class="stok-avail">${info.available} available</span>
+                        <span class="stok-sold">${info.sold} sold</span>
+                    </div>
+                </div>`;
+            }
+            sumHtml += '</div>';
+            sumEl.innerHTML = sumHtml;
+
+            // Alerts
+            const alertBtn = document.getElementById('stokAlertBtn');
+            const alertBadge = document.getElementById('stokAlertBadge');
+            if (data.alerts.length > 0) {
+                alertBtn.style.display = 'flex';
+                alertBadge.textContent = data.alerts.length;
+                const alertPanel = document.getElementById('stokAlertPanel');
+                alertPanel.innerHTML = data.alerts.map(a =>
+                    `<div class="stok-alert-item">
+                        <strong>${a.email}</strong> — ${a.daysLeft <= 0 ? '<span style="color:#f85149">EXPIRED</span>' : `<span style="color:#d29922">${a.daysLeft} hari lagi</span>`}
+                    </div>`
+                ).join('');
+            } else {
+                alertBtn.style.display = 'none';
+            }
+
+            stokRenderInventory();
+        }
+
+        function stokRenderInventory() {
+            const inv = document.getElementById('stokInventory');
+            if (!stokAccounts.length) {
+                inv.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">No accounts in this service</div>';
+                return;
+            }
+            let html = '<div class="accounts-table"><table><thead><tr>' +
+                '<th><input type="checkbox" id="stokSelectAll" onchange="stokToggleAll(this.checked)"></th>' +
+                '<th>Email</th><th>Password</th><th>Expiry</th><th>Profiles</th><th>Actions</th>' +
+                '</tr></thead><tbody>';
+            stokAccounts.forEach(acc => {
+                const exp = acc.expiryDate ? new Date(acc.expiryDate) : null;
+                const expStr = exp ? exp.toLocaleDateString('id-ID') : '-';
+                const now = new Date();
+                const daysLeft = exp ? Math.ceil((exp - now) / 86400000) : null;
+                const expClass = daysLeft !== null && daysLeft <= 7 ? (daysLeft <= 0 ? 'stok-expired' : 'stok-expiring') : '';
+                const usedSlots = acc.profiles ? acc.profiles.filter(p => p.user).length : 0;
+                const totalSlots = acc.profiles ? acc.profiles.length : 5;
+                html += `<tr class="stok-row ${expClass}" id="stok-row-${acc.id}">
+                    <td><input type="checkbox" class="stok-cb" value="${acc.id}"></td>
+                    <td>${acc.email}</td>
+                    <td><code>${acc.password}</code></td>
+                    <td>${expStr}${daysLeft !== null && daysLeft <= 7 ? ` <small>(${daysLeft}d)</small>` : ''}</td>
+                    <td><span class="stok-slot-badge" onclick="stokShowProfiles('${acc.id}')">${usedSlots}/${totalSlots}</span></td>
+                    <td class="stok-actions">
+                        <button class="btn-sm btn-copy" onclick="stokShowSell('${acc.id}')">Jual</button>
+                        <button class="btn-sm btn-danger" onclick="stokDeleteAccount('${acc.id}')">Hapus</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            html += '<div class="stok-bulk-bar" id="stokBulkBar" style="display:none;">' +
+                '<input type="text" id="stokBulkBuyer" placeholder="Nama pembeli...">' +
+                '<button class="btn-primary" onclick="stokBulkSell()">Jual Selected</button>' +
+                '<button class="btn-sm btn-danger" onclick="stokBulkDelete()">Hapus Selected</button></div>';
+            inv.innerHTML = html;
+        }
+
+        function stokToggleAll(checked) {
+            document.querySelectorAll('.stok-cb').forEach(cb => cb.checked = checked);
+            document.getElementById('stokBulkBar').style.display = checked ? 'flex' : 'none';
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('stok-cb')) {
+                const any = document.querySelector('.stok-cb:checked');
+                document.getElementById('stokBulkBar').style.display = any ? 'flex' : 'none';
+            }
+        });
+
+        function stokFilterTable() {
+            const q = document.getElementById('stokSearch').value.toLowerCase();
+            document.querySelectorAll('.stok-row').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        function stokShowAddLayanan() {
+            document.getElementById('stokLayananModalTitle').textContent = 'Tambah Layanan';
+            document.getElementById('stokLayananModalLabel').textContent = 'Nama Layanan';
+            document.getElementById('stokLayananModalInput').value = '';
+            document.getElementById('stokLayananModalBtn').onclick = stokConfirmAddLayanan;
+            document.getElementById('stokAddLayananModal').classList.remove('hidden');
+        }
+
+        function stokShowRenameLayanan() {
+            if (!stokCurrentView) return toast('No service selected');
+            document.getElementById('stokLayananModalTitle').textContent = 'Rename Layanan';
+            document.getElementById('stokLayananModalLabel').textContent = `Rename "${stokCurrentView}" to:`;
+            document.getElementById('stokLayananModalInput').value = '';
+            document.getElementById('stokLayananModalBtn').onclick = stokConfirmRenameLayanan;
+            document.getElementById('stokAddLayananModal').classList.remove('hidden');
+        }
+
+        async function stokConfirmAddLayanan() {
+            const name = document.getElementById('stokLayananModalInput').value.trim();
+            if (!name) return;
+            const resp = await fetch('/api/stok/layanan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            if (resp.ok) {
+                document.getElementById('stokAddLayananModal').classList.add('hidden');
+                toast('Service added');
+                stokLoadDashboard(name);
+            } else {
+                const err = await resp.json();
+                toast(err.detail || 'Error');
+            }
+        }
+
+        async function stokConfirmRenameLayanan() {
+            const newName = document.getElementById('stokLayananModalInput').value.trim();
+            if (!newName) return;
+            const resp = await fetch('/api/stok/layanan/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({old: stokCurrentView, new: newName}) });
+            if (resp.ok) {
+                document.getElementById('stokAddLayananModal').classList.add('hidden');
+                toast('Service renamed');
+                stokLoadDashboard(newName);
+            } else {
+                const err = await resp.json();
+                toast(err.detail || 'Error');
+            }
+        }
+
+        async function stokDeleteLayanan() {
+            if (!stokCurrentView) return;
+            if (!confirm(`Delete service "${stokCurrentView}" and all its data?`)) return;
+            await fetch(`/api/stok/layanan/${stokCurrentView}`, { method: 'DELETE' });
+            toast('Service deleted');
+            stokLoadDashboard();
+        }
+
+        async function stokBulkImport() {
+            if (!stokCurrentView) return toast('Select or create a service first');
+            const bulkData = document.getElementById('stokBulkData').value.trim();
+            const durasi = document.getElementById('stokDurasi').value;
+            if (!bulkData) return toast('Paste account data');
+            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: stokCurrentView, bulkData, durasi}) });
+            const data = await resp.json();
+            toast(`Imported ${data.imported} accounts`);
+            document.getElementById('stokBulkData').value = '';
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        function toggleStokAlerts() {
+            document.getElementById('stokAlertPanel').classList.toggle('hidden');
+        }
+
+        async function stokDeleteAccount(accId) {
+            if (!confirm('Delete this account?')) return;
+            await fetch(`/api/stok/account/${stokCurrentView}/${accId}`, { method: 'DELETE' });
+            toast('Account deleted');
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        function stokShowSell(accId) {
+            stokSellTarget = accId;
+            const acc = stokAccounts.find(a => a.id === accId);
+            document.getElementById('stokSellBuyer').value = '';
+            document.getElementById('sellFull').checked = true;
+            document.getElementById('stokSlotPicker').classList.add('hidden');
+            if (acc && acc.profiles) {
+                document.getElementById('stokSlotPicker').innerHTML = acc.profiles.map(p =>
+                    `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--text);">
+                        <input type="radio" name="stokSlotId" value="${p.id}"> ${p.name} ${p.user ? `(${p.user})` : '(Available)'}
+                    </label>`
+                ).join('');
+            }
+            stokLoadBuyerSuggestions();
+            document.getElementById('stokSellModal').classList.remove('hidden');
+        }
+
+        document.querySelectorAll('input[name="stokSellType"]').forEach(r => {
+            r.addEventListener('change', () => {
+                document.getElementById('stokSlotPicker').classList.toggle('hidden', r.value !== 'slot');
+            });
+        });
+
+        async function stokLoadBuyerSuggestions() {
+            const resp = await fetch('/api/stok/customers');
+            const customers = await resp.json();
+            const dl = document.getElementById('stokBuyerSuggest');
+            dl.innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+        }
+
+        async function stokConfirmSell() {
+            const pembeli = document.getElementById('stokSellBuyer').value.trim();
+            if (!pembeli) return toast('Enter buyer name');
+            const sellType = document.querySelector('input[name="stokSellType"]:checked').value;
+            const body = { pembeli, isSlot: sellType === 'slot' };
+            if (sellType === 'slot') {
+                const slotRadio = document.querySelector('input[name="stokSlotId"]:checked');
+                if (!slotRadio) return toast('Select a slot');
+                body.slotId = parseInt(slotRadio.value);
+            }
+            await fetch(`/api/stok/sell/${stokCurrentView}/${stokSellTarget}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            closeStokModal();
+            toast('Account sold');
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        function closeStokModal() {
+            document.getElementById('stokSellModal').classList.add('hidden');
+            stokSellTarget = null;
+        }
+
+        function stokShowProfiles(accId) {
+            const acc = stokAccounts.find(a => a.id === accId);
+            if (!acc || !acc.profiles) return;
+            document.getElementById('stokProfileList').innerHTML = acc.profiles.map(p =>
+                `<div class="stok-profile-item">
+                    <div class="stok-profile-header">${p.name}</div>
+                    <div class="form-group" style="margin:6px 0;">
+                        <input type="text" id="profName_${acc.id}_${p.id}" value="${p.name || ''}" placeholder="Profile name" style="margin-bottom:4px;">
+                        <input type="text" id="profBuyer_${acc.id}_${p.id}" value="${p.user || ''}" placeholder="Buyer name" style="margin-bottom:4px;">
+                        <input type="text" id="profPin_${acc.id}_${p.id}" value="${p.pin || ''}" placeholder="PIN">
+                    </div>
+                    <button class="btn-sm btn-copy" onclick="stokSaveProfile('${acc.id}', ${p.id})">Save</button>
+                </div>`
+            ).join('');
+            document.getElementById('stokProfileModal').classList.remove('hidden');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('stokProfileModal').classList.add('hidden');
+        }
+
+        async function stokSaveProfile(accId, profileId) {
+            const profileName = document.getElementById(`profName_${accId}_${profileId}`).value;
+            const buyerName = document.getElementById(`profBuyer_${accId}_${profileId}`).value;
+            const pin = document.getElementById(`profPin_${accId}_${profileId}`).value;
+            await fetch(`/api/stok/profile/${stokCurrentView}/${accId}/${profileId}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({profileName, buyerName, pin})
+            });
+            toast('Profile updated');
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        async function stokBulkSell() {
+            const ids = [...document.querySelectorAll('.stok-cb:checked')].map(cb => cb.value);
+            const pembeli = document.getElementById('stokBulkBuyer').value.trim();
+            if (!ids.length) return toast('Select accounts');
+            if (!pembeli) return toast('Enter buyer name');
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'sell', layanan: stokCurrentView, ids, pembeli}) });
+            toast(`Sold ${ids.length} accounts`);
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        async function stokBulkDelete() {
+            const ids = [...document.querySelectorAll('.stok-cb:checked')].map(cb => cb.value);
+            if (!ids.length) return toast('Select accounts');
+            if (!confirm(`Delete ${ids.length} accounts?`)) return;
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', layanan: stokCurrentView, ids}) });
+            toast(`Deleted ${ids.length} accounts`);
+            stokLoadDashboard(stokCurrentView);
+        }
+
+        // ─── Stock History ────────────────────────────────────────
+        async function stokLoadHistory() {
+            const resp = await fetch('/api/stok/history');
+            const data = await resp.json();
+            stokHistoryData = data.history;
+            stokRenderHistory(stokHistoryData);
+        }
+
+        function stokRenderHistory(items) {
+            const tbody = document.getElementById('stokHistoryBody');
+            tbody.innerHTML = items.map(h =>
+                `<tr>
+                    <td>${h.layanan.toUpperCase()}</td>
+                    <td>${h.email}</td>
+                    <td>${h.tipe}</td>
+                    <td>${h.pembeli}</td>
+                    <td>${h.date ? new Date(h.date).toLocaleDateString('id-ID') : '-'}</td>
+                </tr>`
+            ).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);">No sales history</td></tr>';
+        }
+
+        function stokFilterHistory() {
+            const q = document.getElementById('stokHistorySearch').value.toLowerCase();
+            const filtered = stokHistoryData.filter(h =>
+                (h.layanan + h.email + h.tipe + h.pembeli).toLowerCase().includes(q)
+            );
+            stokRenderHistory(filtered);
+        }
+
+        // ─── Stock Customer Check ─────────────────────────────────
+        async function stokLoadCustomerSuggestions() {
+            const resp = await fetch('/api/stok/customers');
+            const customers = await resp.json();
+            const dl = document.getElementById('stokCustSuggest');
+            dl.innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+        }
+
+        async function stokCheckCustomer() {
+            const name = document.getElementById('stokCustName').value.trim();
+            if (!name) return toast('Enter customer name');
+            const resp = await fetch(`/api/stok/customer-check?name=${encodeURIComponent(name)}`);
+            const data = await resp.json();
+            const result = document.getElementById('stokCustResult');
+            const tbody = document.getElementById('stokCustBody');
+            if (data.purchases.length === 0) {
+                result.classList.remove('hidden');
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text2);">No purchases found</td></tr>';
+                return;
+            }
+            result.classList.remove('hidden');
+            tbody.innerHTML = data.purchases.map(p =>
+                `<tr>
+                    <td>${(p.layanan || '').toUpperCase()}</td>
+                    <td>${p.email || ''}</td>
+                    <td>${p.tipe || ''}</td>
+                    <td>${p.date ? new Date(p.date).toLocaleDateString('id-ID') : '-'}</td>
+                    <td>${p.daysLeft !== undefined ? (p.daysLeft > 0 ? `${p.daysLeft} hari` : '<span style="color:#f85149">Expired</span>') : '-'}</td>
+                </tr>`
+            ).join('');
+        }
     </script>
 </body>
 </html>
