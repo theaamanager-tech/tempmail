@@ -107,6 +107,16 @@ CREATE POLICY "Service role full access" ON domains FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON accounts FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON emails FOR ALL USING (true);
 CREATE POLICY "Service role full access" ON settings FOR ALL USING (true);
+
+-- Stock Management data (JSONB key-value store)
+CREATE TABLE IF NOT EXISTS stok_data (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE stok_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access" ON stok_data FOR ALL USING (true);
 ```
 
 ### 4. Configure Environment Variables
