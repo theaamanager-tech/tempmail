@@ -68,6 +68,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                     Buka Stock Manager
                 </a>
+                <a href="#" class="nav-item" data-tab="profiles" onclick="switchTab('profiles')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profil & PIN
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <a href="/admin/logout" class="nav-item logout">
@@ -406,6 +410,18 @@ Response: {
 
             <!-- Stock Management is now a separate page at /stok -->
 
+            <!-- Profil & PIN Tab -->
+            <div class="tab-content" id="tab-profiles">
+                <div class="form-card">
+                    <h3 style="margin:0 0 8px;">Pilih Layanan</h3>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 12px;">Pilih layanan untuk melihat dan mengatur profil akun.</p>
+                    <select id="profileLayanan" onchange="loadProfileAccounts()" style="width:100%;padding:10px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;">
+                        <option value="">-- Pilih Layanan --</option>
+                    </select>
+                </div>
+                <div id="profileAccountsList"></div>
+            </div>
+
         </main>
     </div>
 
@@ -422,6 +438,7 @@ Response: {
             password: 'Password Generator',
             fakeid: 'Fake ID Generator',
             notepad: 'Notepad',
+            profiles: 'Profil & PIN',
         };
 
         const mainTabs = ['generate', 'manual', 'accounts'];
@@ -433,7 +450,59 @@ Response: {
             document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
             document.getElementById('pageTitle').textContent = tabTitles[tab] || tab;
             document.getElementById('statsRow').style.display = mainTabs.includes(tab) ? '' : 'none';
+            if (tab === 'profiles') loadProfileLayanan();
+        }
 
+        async function loadProfileLayanan() {
+            const resp = await fetch('/api/stok/layanan');
+            const data = await resp.json();
+            const sel = document.getElementById('profileLayanan');
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">-- Pilih Layanan --</option>' +
+                (data.layanan || []).map(l => `<option value="${l}" ${l === cur ? 'selected' : ''}>${l.toUpperCase()}</option>`).join('');
+            if (cur && (data.layanan || []).includes(cur)) loadProfileAccounts();
+        }
+
+        async function loadProfileAccounts() {
+            const layanan = document.getElementById('profileLayanan').value;
+            const container = document.getElementById('profileAccountsList');
+            if (!layanan) { container.innerHTML = ''; return; }
+            const resp = await fetch(`/api/stok/dashboard?view=${encodeURIComponent(layanan)}`);
+            const data = await resp.json();
+            const accounts = data.accounts || [];
+            if (!accounts.length) {
+                container.innerHTML = '<div class="form-card"><p style="color:var(--text-muted);text-align:center;">Tidak ada akun di layanan ini. Import akun di Stock Manager terlebih dahulu.</p></div>';
+                return;
+            }
+            container.innerHTML = accounts.map(acc => {
+                const profiles = acc.profiles || [];
+                return `<div class="form-card" style="margin-top:12px;">
+                    <h3 style="margin:0 0 4px;font-size:14px;">${acc.email}</h3>
+                    <p style="color:var(--text-muted);font-size:12px;margin:0 0 12px;">Expired: ${acc.expiryDate ? new Date(acc.expiryDate).toLocaleDateString('id-ID') : '-'}</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+                    ${profiles.map(p => `<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">
+                        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#a29bfe);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${(p.name || 'P')[0].toUpperCase()}</div>
+                        <div style="font-weight:600;font-size:13px;margin-bottom:2px;">${p.name || 'PROFILE ' + p.id}</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${p.user ? '👤 ' + p.user : 'Belum dijual'}</div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <input type="text" placeholder="Nama Profil" value="${p.name || ''}" id="pn_${acc.id}_${p.id}" style="padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;">
+                            <input type="text" placeholder="PIN (4 digit)" value="${p.pin || ''}" maxlength="4" id="pp_${acc.id}_${p.id}" style="padding:6px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;text-align:center;letter-spacing:4px;">
+                            <button onclick="saveProfile('${layanan}','${acc.id}',${p.id})" style="padding:6px;background:#6c5ce7;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">Simpan</button>
+                        </div>
+                    </div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function saveProfile(layanan, accId, profileId) {
+            const name = document.getElementById(`pn_${accId}_${profileId}`).value;
+            const pin = document.getElementById(`pp_${accId}_${profileId}`).value;
+            await fetch(`/api/stok/profile/${layanan}/${accId}/${profileId}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({profileName: name, pin: pin})
+            });
+            showToast('Profil disimpan!');
         }
 
 

@@ -1070,7 +1070,10 @@ STOK_DIR = os.path.join(BASE_DIR, "stok_data")
 
 
 def _ensure_stok_dir():
-    os.makedirs(STOK_DIR, exist_ok=True)
+    try:
+        os.makedirs(STOK_DIR, exist_ok=True)
+    except OSError:
+        pass
 
 
 def _stok_settings_path():
@@ -1092,36 +1095,117 @@ def _read_json(path: str, default=None):
     try:
         with open(path, "r") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
         return default
 
 
 def _write_json(path: str, data):
     _ensure_stok_dir()
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    try:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+    except OSError:
+        pass
 
 
-def _read_stok_settings():
-    return _read_json(_stok_settings_path(), {"storeName": "STORE", "storeTag": "Management", "loginPassword": "admin123"})
+# ─── Supabase stok_data helpers ──────────────────────────────────
+
+async def _stok_read(key: str, default=None):
+    if default is None:
+        default = []
+    if USE_SUPABASE and supabase:
+        try:
+            rows = await supabase.select("stok_data", {"key": f"eq.{key}", "select": "value"})
+            if rows and rows[0].get("value") is not None:
+                val = rows[0]["value"]
+                return val if isinstance(val, (list, dict)) else json.loads(val)
+        except Exception:
+            pass
+        return default
+    if key == "_settings":
+        path = _stok_settings_path()
+    elif key == "_customers":
+        path = _stok_customers_path()
+    else:
+        path = _stok_db_path(key[3:] if key.startswith("db_") else key)
+    return _read_json(path, default)
 
 
-def _save_stok_settings(data):
-    _write_json(_stok_settings_path(), data)
+async def _stok_write(key: str, data):
+    if USE_SUPABASE and supabase:
+        try:
+            await supabase.upsert("stok_data", {"key": key, "value": json.dumps(data, default=str)}, on_conflict="key")
+        except Exception:
+            pass
+        return
+    if key == "_settings":
+        path = _stok_settings_path()
+    elif key == "_customers":
+        path = _stok_customers_path()
+    else:
+        path = _stok_db_path(key[3:] if key.startswith("db_") else key)
+    _write_json(path, data)
 
 
-def _read_customers():
-    return _read_json(_stok_customers_path(), [])
+async def _read_stok_settings():
+    return await _stok_read("_settings", {"storeName": "STORE", "storeTag": "Management", "loginPassword": "admin123"})
 
 
-def _save_customers(data):
-    _write_json(_stok_customers_path(), data)
+async def _save_stok_settings(data):
+    await _stok_write("_settings", data)
 
 
-def _get_layanan_list():
+async def _read_customers():
+    return await _stok_read("_customers", [])
+
+
+async def _save_customers(data):
+    await _stok_write("_customers", data)
+
+
+async def _get_layanan_list():
+    if USE_SUPABASE and supabase:
+        try:
+            rows = await supabase.select("stok_data", {"key": "like.db_*", "select": "key", "order": "key"})
+            return sorted([r["key"][3:] for r in rows if r["key"].startswith("db_")])
+        except Exception:
+            return []
     _ensure_stok_dir()
-    files = [f for f in os.listdir(STOK_DIR) if f.startswith("db_") and f.endswith(".json")]
-    return sorted([f[3:-5] for f in files])
+    try:
+        files = [f for f in os.listdir(STOK_DIR) if f.startswith("db_") and f.endswith(".json")]
+        return sorted([f[3:-5] for f in files])
+    except OSError:
+        return []
+
+
+async def _read_stok_db(layanan: str):
+    return await _stok_read(f"db_{layanan}", [])
+
+
+async def _write_stok_db(layanan: str, data):
+    await _stok_write(f"db_{layanan}", data)
+
+
+async def _delete_stok_db(layanan: str):
+    if USE_SUPABASE and supabase:
+        try:
+            await supabase.delete("stok_data", {"key": f"eq.db_{layanan}"})
+        except Exception:
+            pass
+        return
+    path = _stok_db_path(layanan)
+    if os.path.exists(path):
+        os.remove(path)
+
+
+async def _stok_db_exists(layanan: str) -> bool:
+    if USE_SUPABASE and supabase:
+        try:
+            rows = await supabase.select("stok_data", {"key": f"eq.db_{layanan}", "select": "key"})
+            return len(rows) > 0
+        except Exception:
+            return False
+    return os.path.exists(_stok_db_path(layanan))
 
 
 def _sanitize_layanan(name: str) -> str:
@@ -1131,7 +1215,7 @@ def _sanitize_layanan(name: str) -> str:
 @app.get("/api/stok/layanan")
 async def stok_list_layanan(request: Request):
     require_admin(request)
-    return {"layanan": _get_layanan_list()}
+    return {"layanan": await _get_layanan_list()}
 
 
 @app.post("/api/stok/layanan")
@@ -1141,10 +1225,9 @@ async def stok_add_layanan(request: Request):
     name = _sanitize_layanan(data.get("name", ""))
     if not name:
         raise HTTPException(400, "Name is required")
-    path = _stok_db_path(name)
-    if os.path.exists(path):
+    if await _stok_db_exists(name):
         raise HTTPException(400, "Service already exists")
-    _write_json(path, [])
+    await _write_stok_db(name, [])
     return {"ok": True, "name": name}
 
 
@@ -1156,18 +1239,18 @@ async def stok_rename_layanan(request: Request):
     new = _sanitize_layanan(data.get("new", ""))
     if not old or not new:
         raise HTTPException(400, "Both old and new names required")
-    old_path = _stok_db_path(old)
-    new_path = _stok_db_path(new)
-    if not os.path.exists(old_path):
+    if not await _stok_db_exists(old):
         raise HTTPException(404, "Service not found")
-    if os.path.exists(new_path):
+    if await _stok_db_exists(new):
         raise HTTPException(400, "New name already exists")
-    os.rename(old_path, new_path)
-    customers = _read_customers()
+    old_data = await _read_stok_db(old)
+    await _write_stok_db(new, old_data)
+    await _delete_stok_db(old)
+    customers = await _read_customers()
     for c in customers:
         if c.get("layanan") == old:
             c["layanan"] = new
-    _save_customers(customers)
+    await _save_customers(customers)
     return {"ok": True, "name": new}
 
 
@@ -1175,23 +1258,21 @@ async def stok_rename_layanan(request: Request):
 async def stok_delete_layanan(name: str, request: Request):
     require_admin(request)
     safe = _sanitize_layanan(name)
-    path = _stok_db_path(safe)
-    if os.path.exists(path):
-        os.remove(path)
+    await _delete_stok_db(safe)
     return {"ok": True}
 
 
 @app.get("/api/stok/dashboard")
 async def stok_dashboard(request: Request, view: str = ""):
     require_admin(request)
-    layanan_list = _get_layanan_list()
+    layanan_list = await _get_layanan_list()
     current = view if view in layanan_list else (layanan_list[0] if layanan_list else "")
     accounts = []
     alerts = []
     summary = {}
 
     if current:
-        all_accounts = _read_json(_stok_db_path(current), [])
+        all_accounts = await _read_stok_db(current)
         accounts = [a for a in all_accounts if not a.get("isSold", False)]
         now = datetime.now(timezone.utc)
         for a in accounts:
@@ -1211,7 +1292,7 @@ async def stok_dashboard(request: Request, view: str = ""):
                     pass
 
     for lay in layanan_list:
-        all_acc = _read_json(_stok_db_path(lay), [])
+        all_acc = await _read_stok_db(lay)
         available = len([a for a in all_acc if not a.get("isSold", False)])
         sold = len([a for a in all_acc if a.get("isSold", False)])
         summary[lay] = {"available": available, "sold": sold, "total": len(all_acc)}
@@ -1232,12 +1313,12 @@ async def stok_bulk_import(request: Request):
     layanan = _sanitize_layanan(data.get("layanan", ""))
     bulk_data = data.get("bulkData", "")
     durasi = int(data.get("durasi", 30))
+    profile_count = int(data.get("profileCount", 5))
 
     if not layanan or not bulk_data:
         raise HTTPException(400, "layanan and bulkData required")
 
-    path = _stok_db_path(layanan)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(layanan)
 
     lines = [l.strip() for l in bulk_data.strip().split("\n") if l.strip()]
     imported = 0
@@ -1248,7 +1329,7 @@ async def stok_bulk_import(request: Request):
         acc_email = parts[0].strip()
         acc_pass = parts[1].strip()
         expiry = (datetime.now(timezone.utc) + timedelta(days=durasi)).isoformat()
-        profiles = [{"id": i, "name": f"PROFILE {i}", "user": None, "pin": ""} for i in range(1, 6)]
+        profiles = [{"id": i, "name": f"PROFILE {i}", "user": None, "pin": "", "avatar": ""} for i in range(1, profile_count + 1)]
         accounts.append({
             "id": str(uuid.uuid4()),
             "email": acc_email,
@@ -1259,7 +1340,7 @@ async def stok_bulk_import(request: Request):
         })
         imported += 1
 
-    _write_json(path, accounts)
+    await _write_stok_db(layanan, accounts)
     return {"ok": True, "imported": imported}
 
 
@@ -1268,8 +1349,7 @@ async def stok_update_profile(layanan: str, acc_id: str, profile_id: int, reques
     require_admin(request)
     data = await request.json()
     safe = _sanitize_layanan(layanan)
-    path = _stok_db_path(safe)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(safe)
 
     for acc in accounts:
         if acc["id"] == acc_id:
@@ -1286,7 +1366,7 @@ async def stok_update_profile(layanan: str, acc_id: str, profile_id: int, reques
                     break
             break
 
-    _write_json(path, accounts)
+    await _write_stok_db(safe, accounts)
     return {"ok": True}
 
 
@@ -1296,8 +1376,7 @@ async def stok_verify_pin(layanan: str, acc_id: str, profile_id: int, request: R
     data = await request.json()
     pin = data.get("pin", "")
     safe = _sanitize_layanan(layanan)
-    path = _stok_db_path(safe)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(safe)
 
     for acc in accounts:
         if acc["id"] == acc_id:
@@ -1321,8 +1400,7 @@ async def stok_sell_account(layanan: str, acc_id: str, request: Request):
     slot_id = data.get("slotId", None)
 
     safe = _sanitize_layanan(layanan)
-    path = _stok_db_path(safe)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(safe)
 
     for acc in accounts:
         if acc["id"] == acc_id:
@@ -1338,7 +1416,7 @@ async def stok_sell_account(layanan: str, acc_id: str, request: Request):
                     p["user"] = pembeli
                 tipe = "Full Account"
 
-            customers = _read_customers()
+            customers = await _read_customers()
             customers.append({
                 "id": str(uuid.uuid4()),
                 "name": pembeli,
@@ -1347,10 +1425,10 @@ async def stok_sell_account(layanan: str, acc_id: str, request: Request):
                 "tipe": tipe,
                 "date": datetime.now(timezone.utc).isoformat(),
             })
-            _save_customers(customers)
+            await _save_customers(customers)
             break
 
-    _write_json(path, accounts)
+    await _write_stok_db(safe, accounts)
     return {"ok": True}
 
 
@@ -1363,13 +1441,12 @@ async def stok_bulk_action(request: Request):
     ids = data.get("ids", [])
     pembeli = data.get("pembeli", "Unknown")
 
-    path = _stok_db_path(layanan)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(layanan)
 
     if action == "delete":
         accounts = [a for a in accounts if a["id"] not in ids]
     elif action == "sell":
-        customers = _read_customers()
+        customers = await _read_customers()
         for acc in accounts:
             if acc["id"] in ids:
                 acc["isSold"] = True
@@ -1383,9 +1460,9 @@ async def stok_bulk_action(request: Request):
                     "tipe": "Full Account",
                     "date": datetime.now(timezone.utc).isoformat(),
                 })
-        _save_customers(customers)
+        await _save_customers(customers)
 
-    _write_json(path, accounts)
+    await _write_stok_db(layanan, accounts)
     return {"ok": True}
 
 
@@ -1393,20 +1470,19 @@ async def stok_bulk_action(request: Request):
 async def stok_delete_account(layanan: str, acc_id: str, request: Request):
     require_admin(request)
     safe = _sanitize_layanan(layanan)
-    path = _stok_db_path(safe)
-    accounts = _read_json(path, [])
+    accounts = await _read_stok_db(safe)
     accounts = [a for a in accounts if a["id"] != acc_id]
-    _write_json(path, accounts)
+    await _write_stok_db(safe, accounts)
     return {"ok": True}
 
 
 @app.get("/api/stok/history")
 async def stok_history(request: Request):
     require_admin(request)
-    layanan_list = _get_layanan_list()
+    layanan_list = await _get_layanan_list()
     sold = []
     for lay in layanan_list:
-        all_acc = _read_json(_stok_db_path(lay), [])
+        all_acc = await _read_stok_db(lay)
         for acc in all_acc:
             if acc.get("isSold", False):
                 buyer = "Unknown"
@@ -1431,7 +1507,7 @@ async def stok_history(request: Request):
                         "date": "",
                     })
 
-    customers = _read_customers()
+    customers = await _read_customers()
     for c in customers:
         found = False
         for s in sold:
@@ -1463,7 +1539,7 @@ async def stok_history(request: Request):
 @app.get("/api/stok/customers")
 async def stok_customers_api(request: Request):
     require_admin(request)
-    customers = _read_customers()
+    customers = await _read_customers()
     unique = {}
     for c in customers:
         name = c.get("name", "")
@@ -1481,13 +1557,13 @@ async def stok_customer_check(request: Request, name: str = ""):
     require_admin(request)
     if not name:
         return {"purchases": []}
-    customers = _read_customers()
+    customers = await _read_customers()
     purchases = [c for c in customers if c.get("name", "").lower() == name.lower()]
     for p in purchases:
         layanan = p.get("layanan", "")
         acc_email = p.get("email", "")
         if layanan:
-            all_acc = _read_json(_stok_db_path(layanan), [])
+            all_acc = await _read_stok_db(layanan)
             for a in all_acc:
                 if a.get("email") == acc_email:
                     if a.get("expiryDate"):
@@ -1507,16 +1583,16 @@ async def stok_customer_check(request: Request, name: str = ""):
 @app.get("/api/stok/settings")
 async def stok_get_settings(request: Request):
     require_admin(request)
-    return _read_stok_settings()
+    return await _read_stok_settings()
 
 
 @app.post("/api/stok/settings")
 async def stok_save_settings(request: Request):
     require_admin(request)
     data = await request.json()
-    settings = _read_stok_settings()
+    settings = await _read_stok_settings()
     settings.update(data)
-    _save_stok_settings(settings)
+    await _save_stok_settings(settings)
     return {"ok": True}
 
 
