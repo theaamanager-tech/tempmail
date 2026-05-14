@@ -476,6 +476,12 @@ def require_admin(request: Request):
         raise HTTPException(status_code=303, headers={"Location": "/gatekeeper"})
 
 
+@app.get("/stok", response_class=HTMLResponse)
+async def stok_page(request: Request):
+    require_admin(request)
+    return templates.TemplateResponse(request, "stok.html", {})
+
+
 @app.get("/panel", response_class=HTMLResponse)
 async def admin_panel(request: Request, db=Depends(get_db)):
     require_admin(request)
