@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Stock Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --surface: #1c2333;
+            --surface2: #222d3d;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text2: #8b949e;
+            --primary: #6c5ce7;
+            --primary2: #5a4bd1;
+            --green: #2ecc71;
+            --green2: #27ae60;
+            --red: #f85149;
+            --yellow: #d29922;
+            --radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+        a { text-decoration: none; color: inherit; }
+
+        /* ─── Sidebar ────────────────────────── */
+        .sb { width: 200px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
+        .sb-brand { padding: 24px 20px 20px; display: flex; align-items: center; gap: 12px; }
+        .sb-logo { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--green)); display: flex; align-items: center; justify-content: center; }
+        .sb-logo svg { color: #fff; }
+        .sb-name { font-size: 14px; font-weight: 800; line-height: 1.2; }
+        .sb-name small { display: block; font-size: 11px; font-weight: 600; color: var(--primary); }
+        .sb-label { padding: 0 20px; font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-top: 20px; margin-bottom: 8px; }
+        .sb-nav { list-style: none; padding: 0 10px; }
+        .sb-nav li a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--text2); font-size: 13px; font-weight: 600; transition: all 0.15s; }
+        .sb-nav li a:hover { background: var(--surface); color: var(--text); }
+        .sb-nav li a.active { background: var(--primary); color: #fff; }
+        .sb-nav li a svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .sb-services { flex: 1; overflow-y: auto; }
+        .sb-svc-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin: 0 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all 0.15s; }
+        .sb-svc-item:hover { background: var(--surface); color: var(--text); }
+        .sb-svc-item.active { color: var(--primary); background: rgba(108, 92, 231, 0.1); }
+        .sb-svc-item .svc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+        .sb-bottom { padding: 12px 10px; border-top: 1px solid var(--border); }
+        .sb-bottom a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; color: var(--text2); font-size: 13px; font-weight: 600; transition: all 0.15s; }
+        .sb-bottom a:hover { background: var(--surface); color: var(--text); }
+        .sb-bottom a.logout { color: var(--red); }
+        .sb-bottom a.logout:hover { background: rgba(248, 81, 73, 0.1); }
+
+        /* ─── Main Content ───────────────────── */
+        .main { flex: 1; margin-left: 200px; min-height: 100vh; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; padding: 24px 32px 0; }
+        .topbar-left h1 { font-size: 24px; font-weight: 800; }
+        .topbar-left p { font-size: 14px; color: var(--text2); margin-top: 2px; }
+        .topbar-right { display: flex; gap: 10px; align-items: center; }
+        .content { padding: 24px 32px 32px; }
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* ─── Buttons ────────────────────────── */
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary2); }
+        .btn-green { background: var(--green); color: #fff; }
+        .btn-green:hover { background: var(--green2); }
+        .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+        .btn-danger:hover { background: rgba(248,81,73,0.1); }
+        .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; }
+        .btn-icon { padding: 8px; border-radius: 8px; background: transparent; border: 1px solid var(--border); color: var(--text2); cursor: pointer; display: flex; align-items: center; }
+        .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+        .alert-btn { position: relative; }
+        .alert-badge { position: absolute; top: 2px; right: 2px; background: var(--red); color: #fff; font-size: 9px; font-weight: 700; border-radius: 50%; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+
+        /* ─── Cards ──────────────────────────── */
+        .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+        .card-highlight { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+        .card-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+        .card-value { font-size: 36px; font-weight: 800; color: var(--text); }
+        .card-value small { font-size: 16px; font-weight: 600; color: var(--text2); }
+        .card-big-text { font-size: 28px; font-weight: 900; color: var(--primary); margin-top: 8px; }
+
+        /* ─── Import Card ────────────────────── */
+        .import-card textarea { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; resize: vertical; outline: none; min-height: 80px; }
+        .import-card textarea:focus { border-color: var(--primary); }
+        .import-card textarea::placeholder { color: var(--text2); }
+        .import-row { display: flex; gap: 10px; align-items: flex-end; margin-top: 12px; }
+        .import-row input { width: 80px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; outline: none; }
+        .import-row input:focus { border-color: var(--primary); }
+
+        /* ─── Table ──────────────────────────── */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .section-header h2 { font-size: 18px; font-weight: 700; }
+        .search-input { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-width: 200px; }
+        .search-input svg { color: var(--text2); flex-shrink: 0; }
+        .search-input input { background: transparent; border: none; color: var(--text); font-size: 13px; outline: none; width: 100%; }
+        .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .tbl { width: 100%; border-collapse: collapse; }
+        .tbl th { padding: 14px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid var(--border); background: var(--bg2); }
+        .tbl td { padding: 14px 16px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
+        .tbl tr:last-child td { border-bottom: none; }
+        .tbl tr:hover td { background: rgba(108, 92, 231, 0.04); }
+        .tbl-empty { text-align: center; padding: 48px 16px !important; color: var(--text2); font-style: italic; }
+        .tbl-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+        .tag-green { background: rgba(46,204,113,0.15); color: var(--green); }
+        .tag-red { background: rgba(248,81,73,0.15); color: var(--red); }
+        .tag-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+        .tag-purple { background: rgba(108,92,231,0.15); color: var(--primary); }
+        .cred-cell strong { display: block; font-size: 14px; }
+        .cred-cell small { color: var(--text2); font-size: 12px; }
+
+        /* ─── Search Card ────────────────────── */
+        .search-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+        .search-card .card-label { margin-bottom: 12px; }
+        .search-card-row { display: flex; gap: 12px; align-items: center; }
+        .search-card-input { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+        .search-card-input svg { color: var(--text2); flex-shrink: 0; }
+        .search-card-input input { background: transparent; border: none; color: var(--text); font-size: 14px; outline: none; width: 100%; }
+        .search-card-input input::placeholder { color: var(--text2); }
+
+        /* ─── Empty State ────────────────────── */
+        .empty-state { text-align: center; padding: 64px 20px; }
+        .empty-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(108,92,231,0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+        .empty-icon svg { color: var(--primary); }
+        .empty-state h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .empty-state p { font-size: 14px; color: var(--text2); }
+
+        /* ─── Modal ──────────────────────────── */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; animation: fadeIn 0.15s; }
+        .modal-overlay.hidden { display: none; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto; }
+        .modal-sm { max-width: 380px; }
+        .modal-lg { max-width: 640px; }
+        .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; }
+        .modal-head h3 { font-size: 18px; font-weight: 700; }
+        .modal-close { background: none; border: none; color: var(--text2); font-size: 24px; cursor: pointer; line-height: 1; }
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 0 24px 24px; }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 16px 24px 20px; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+        /* ─── Profile Cards ──────────────────── */
+        .profiles-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .profile-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .profile-chip:hover { border-color: var(--primary); }
+        .profile-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+        .profile-edit-card { display: flex; gap: 14px; align-items: flex-start; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; }
+        .profile-edit-avatar { position: relative; cursor: pointer; flex-shrink: 0; }
+        .avatar-overlay { position: absolute; bottom: 0; right: 0; background: var(--primary); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; border: 2px solid var(--surface); }
+        .profile-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .profile-fields input { width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
+        .profile-fields input:focus { border-color: var(--primary); }
+
+        /* ─── Sell Segmented ─────────────────── */
+        .seg { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .seg input { display: none; }
+        .seg label { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; background: var(--bg); transition: all 0.15s; }
+        .seg input:checked + label { background: var(--primary); color: #fff; }
+        .slot-option { display: flex; align-items: center; gap: 10px; padding: 8px 12px; color: var(--text); font-size: 13px; cursor: pointer; border-radius: 8px; }
+        .slot-option:hover { background: var(--surface); }
+
+        /* ─── PIN Modal ──────────────────────── */
+        .pin-entry { display: flex; flex-direction: column; align-items: center; padding: 32px 24px; }
+        .pin-input { width: 140px; text-align: center; padding: 14px; font-size: 22px; letter-spacing: 8px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; color: var(--text); outline: none; }
+        .pin-input:focus { border-color: var(--primary); }
+        .pin-error { color: var(--red); font-size: 13px; font-weight: 600; margin-top: 8px; }
+
+        /* ─── Detail Grid ────────────────────── */
+        .detail-card { padding: 24px; text-align: center; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin-top: 16px; }
+        .detail-field { padding: 12px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+        .detail-label { display: block; font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+        .detail-value { font-size: 14px; font-weight: 600; color: var(--text); word-break: break-all; }
+
+        /* ─── Settings ───────────────────────── */
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+
+        /* ─── Alert Panel ────────────────────── */
+        .alert-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+        .alert-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .alert-item:last-child { border-bottom: none; }
+
+        /* ─── Bulk Bar ───────────────────────── */
+        .bulk-bar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); margin-top: 16px; }
+        .bulk-bar input { flex: 1; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
+
+        /* ─── Toast ──────────────────────────── */
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 999; transition: opacity 0.3s; }
+        .toast.hidden { opacity: 0; pointer-events: none; }
+
+        @media (max-width: 768px) {
+            .sb { width: 60px; }
+            .sb-name, .sb-label, .sb-nav li a span, .sb-svc-item span, .sb-bottom a span { display: none; }
+            .sb-brand { padding: 16px 12px; justify-content: center; }
+            .sb-nav li a { justify-content: center; padding: 10px; }
+            .sb-bottom a { justify-content: center; padding: 10px; }
+            .main { margin-left: 60px; }
+            .topbar, .content { padding-left: 16px; padding-right: 16px; }
+            .cards-row { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sb">
+        <div class="sb-brand">
+            <div class="sb-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </div>
+            <div class="sb-name" id="sbStoreName">STORE<small>Management</small></div>
+        </div>
+
+        <div class="sb-label">Menu Utama</div>
+        <ul class="sb-nav">
+            <li><a href="#" class="active" data-view="dashboard" onclick="switchView('dashboard')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Dashboard</span>
+            </a></li>
+            <li><a href="#" data-view="history" onclick="switchView('history')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Rekap Penjualan</span>
+            </a></li>
+            <li><a href="#" data-view="customer" onclick="switchView('customer')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Cek Customer</span>
+            </a></li>
+        </ul>
+
+        <div class="sb-label">Layanan Aktif</div>
+        <div class="sb-services" id="sbServices"></div>
+
+        <div class="sb-bottom">
+            <a href="#" onclick="switchView('settings')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                <span>Pengaturan</span>
+            </a>
+            <a href="/panel" class="logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span>Kembali ke Panel</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main">
+        <!-- ═══ DASHBOARD VIEW ═══ -->
+        <div class="view active" id="view-dashboard">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1>Ringkasan Stok</h1>
+                    <p>Kelola stok akun Anda secara real-time.</p>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn-icon alert-btn" id="alertBtn" onclick="toggleAlerts()" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                        <span class="alert-badge" id="alertBadge">0</span>
+                    </button>
+                    <button class="btn btn-primary" onclick="showAddLayanan()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Tambah Layanan
+                    </button>
+                </div>
+            </div>
+            <div class="content">
+                <div id="alertPanel" class="alert-panel hidden"></div>
+
+                <div class="cards-row" id="dashCards">
+                    <div class="card import-card">
+                        <div class="card-label" style="display:flex;align-items:center;gap:6px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Import Akun Massal
+                        </div>
+                        <textarea id="importData" placeholder="format: email|password (satu per baris)"></textarea>
+                        <div class="import-row">
+                            <input type="number" id="importDays" value="30" min="1" max="365" placeholder="Hari">
+                            <button class="btn btn-primary" onclick="bulkImport()">Simpan Akun</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Stok Tersedia</div>
+                        <div class="card-value" id="stokCount">0 <small>Akun</small></div>
+                    </div>
+                    <div class="card card-highlight">
+                        <div class="card-label">Layanan Terpilih</div>
+                        <div class="card-big-text" id="currentServiceName">-</div>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2>Daftar Inventaris</h2>
+                    <div class="search-input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="text" id="invSearch" placeholder="Cari akun..." oninput="filterInventory()">
+                    </div>
+                </div>
+                <div class="tbl-wrap">
+                    <table class="tbl">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)"></th>
+                                <th>Kredensial</th>
+                                <th>Profil</th>
+                                <th>Masa Aktif</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invBody"></tbody>
+                    </table>
+                </div>
+                <div class="bulk-bar hidden" id="bulkBar">
+                    <input type="text" id="bulkBuyer" placeholder="Nama pembeli...">
+                    <button class="btn btn-primary btn-sm" onclick="bulkSell()">Jual Selected</button>
+                    <button class="btn btn-danger btn-sm" onclick="bulkDelete()">Hapus Selected</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ HISTORY VIEW ═══ -->
+        <div class="view" id="view-history">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1>Rekap Transaksi</h1>
+                    <p>Monitoring penjualan Slot & Full Account secara real-time.</p>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-green" onclick="printPDF()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        Cetak PDF
+                    </button>
+                </div>
+            </div>
+            <div class="content">
+                <div class="search-card">
+                    <div class="card-label">Cari Histori Pelanggan</div>
+                    <div class="search-card-row">
+                        <div class="search-card-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input type="text" id="histBuyerSearch" placeholder="Masukkan nama pembeli..." list="histBuyerSuggest">
+                            <datalist id="histBuyerSuggest"></datalist>
+                        </div>
+                        <button class="btn btn-green" onclick="searchHistoryByBuyer()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            Cek Laporan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2>Daftar Penjualan</h2>
+                    <div class="search-input">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        <input type="text" id="histFilter" placeholder="Filter tabel..." oninput="filterHistory()">
+                    </div>
+                </div>
+                <div class="tbl-wrap">
+                    <table class="tbl">
+                        <thead>
+                            <tr><th>Waktu</th><th>Layanan</th><th>Tipe</th><th>Pembeli</th><th>Status Garansi</th></tr>
+                        </thead>
+                        <tbody id="histBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CUSTOMER VIEW ═══ -->
+        <div class="view" id="view-customer">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1>Cek Customer</h1>
+                    <p>Cari riwayat pembelian pelanggan.</p>
+                </div>
+            </div>
+            <div class="content">
+                <div class="search-card">
+                    <div class="card-label">Cari Nama Pelanggan</div>
+                    <div class="search-card-row">
+                        <div class="search-card-input">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input type="text" id="custName" placeholder="Masukkan nama pembeli..." list="custSuggest">
+                            <datalist id="custSuggest"></datalist>
+                        </div>
+                        <button class="btn btn-green" onclick="checkCustomer()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            Cek Laporan
+                        </button>
+                    </div>
+                </div>
+
+                <div id="custResult"></div>
+            </div>
+        </div>
+
+        <!-- ═══ SETTINGS VIEW ═══ -->
+        <div class="view" id="view-settings">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <h1>Pengaturan Toko</h1>
+                    <p>Kelola konfigurasi toko Anda.</p>
+                </div>
+            </div>
+            <div class="content">
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h3 style="margin-bottom:16px;">Informasi Toko</h3>
+                        <div class="form-group">
+                            <label>Nama Toko</label>
+                            <input type="text" id="setStoreName">
+                        </div>
+                        <div class="form-group">
+                            <label>Tagline</label>
+                            <input type="text" id="setStoreTag">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveSettings()">Simpan Pengaturan</button>
+                    </div>
+                    <div class="settings-card">
+                        <h3 style="margin-bottom:16px;">Kelola Layanan</h3>
+                        <div id="settingsServiceList"></div>
+                        <button class="btn btn-outline" onclick="showAddLayanan()" style="margin-top:12px;">+ Tambah Layanan Baru</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MODALS ═══ -->
+    <!-- Sell Modal -->
+    <div id="sellModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-head"><h3>Jual Akun</h3><button class="modal-close" onclick="closeSellModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama Pembeli</label>
+                    <input type="text" id="sellBuyer" placeholder="Nama pembeli..." list="sellBuyerSuggest">
+                    <datalist id="sellBuyerSuggest"></datalist>
+                </div>
+                <div class="form-group">
+                    <label>Tipe Penjualan</label>
+                    <div class="seg">
+                        <input type="radio" name="sellType" id="sFull" value="full" checked><label for="sFull">Full Account</label>
+                        <input type="radio" name="sellType" id="sSlot" value="slot"><label for="sSlot">Per Slot</label>
+                    </div>
+                </div>
+                <div id="slotPicker" class="hidden"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeSellModal()">Batal</button>
+                <button class="btn btn-primary btn-sm" onclick="confirmSell()">Jual</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal-overlay hidden">
+        <div class="modal modal-lg">
+            <div class="modal-head"><h3 id="profileModalTitle">Profiles</h3><button class="modal-close" onclick="closeProfileModal()">&times;</button></div>
+            <div class="modal-body" id="profileList"></div>
+        </div>
+    </div>
+
+    <!-- Profile Detail Modal -->
+    <div id="profileDetailModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-head"><h3 id="profileDetailTitle">Profile Detail</h3><button class="modal-close" onclick="el('profileDetailModal').classList.add('hidden')">&times;</button></div>
+            <div class="modal-body" id="profileDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- PIN Modal -->
+    <div id="pinModal" class="modal-overlay hidden">
+        <div class="modal modal-sm">
+            <div class="pin-entry">
+                <div id="pinAvatar"></div>
+                <h3 id="pinProfileName" style="margin:8px 0 4px;">Profile</h3>
+                <p style="color:var(--text2);font-size:13px;margin:0 0 16px;">Masukkan PIN untuk melanjutkan</p>
+                <input type="password" class="pin-input" id="pinInput" maxlength="10" placeholder="PIN" onkeydown="if(event.key==='Enter')submitPin()">
+                <div id="pinError" class="pin-error hidden">PIN salah</div>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="el('pinModal').classList.add('hidden')">Batal</button>
+                    <button class="btn btn-primary btn-sm" onclick="submitPin()">Masuk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Rename Layanan Modal -->
+    <div id="layananModal" class="modal-overlay hidden">
+        <div class="modal modal-sm">
+            <div class="modal-head"><h3 id="layananModalTitle">Tambah Layanan</h3><button class="modal-close" onclick="el('layananModal').classList.add('hidden')">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label id="layananModalLabel">Nama Layanan</label>
+                    <input type="text" id="layananModalInput" placeholder="contoh: netflix">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="el('layananModal').classList.add('hidden')">Batal</button>
+                <button class="btn btn-primary btn-sm" id="layananModalBtn" onclick="confirmAddLayanan()">Tambah</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script>
+        const COLORS = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#e91e63','#00bcd4','#ff5722'];
+        let currentView = '';
+        let accounts = [];
+        let sellTarget = null;
+        let pinTarget = null;
+        let historyData = [];
+
+        const el = id => document.getElementById(id);
+
+        function showToast(msg) {
+            const t = el('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 2500);
+        }
+
+        function avatarHtml(p, size) {
+            size = size || 24;
+            if (p.avatar) return `<div class="profile-avatar" style="width:${size}px;height:${size}px;"><img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`;
+            const c = COLORS[(p.id || 0) % COLORS.length];
+            return `<div class="profile-avatar" style="width:${size}px;height:${size}px;background:${c};font-size:${Math.floor(size*0.4)}px;">${(p.name||'P').charAt(0).toUpperCase()}</div>`;
+        }
+
+        // ═══ VIEW SWITCHING ═══
+        function switchView(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            el('view-' + view).classList.add('active');
+            document.querySelectorAll('.sb-nav a').forEach(a => a.classList.toggle('active', a.dataset.view === view));
+
+            if (view === 'dashboard') loadDashboard();
+            else if (view === 'history') loadHistory();
+            else if (view === 'customer') loadCustomerSuggestions();
+            else if (view === 'settings') loadSettings();
+        }
+
+        // ═══ DASHBOARD ═══
+        async function loadDashboard(view) {
+            const url = view ? `/api/stok/dashboard?view=${encodeURIComponent(view)}` : '/api/stok/dashboard';
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            currentView = data.currentView;
+            accounts = data.accounts;
+
+            // Sidebar services
+            const svcs = el('sbServices');
+            svcs.innerHTML = data.layananList.map(l =>
+                `<div class="sb-svc-item ${l === currentView ? 'active' : ''}" onclick="loadDashboard('${l}')">
+                    <span class="svc-dot"></span>
+                    <span>${l.toUpperCase()}</span>
+                </div>`
+            ).join('') || '<div style="padding:8px 20px;font-size:12px;color:var(--text2);">Belum ada</div>';
+
+            // Stats
+            const avail = data.summary[currentView] ? data.summary[currentView].available : 0;
+            el('stokCount').innerHTML = `${avail} <small>Akun</small>`;
+            el('currentServiceName').textContent = currentView ? currentView.toUpperCase() : '-';
+
+            // Alerts
+            if (data.alerts.length > 0) {
+                el('alertBtn').style.display = 'flex';
+                el('alertBadge').textContent = data.alerts.length;
+                el('alertPanel').innerHTML = data.alerts.map(a =>
+                    `<div class="alert-item"><span>${a.email}</span><span class="${a.daysLeft <= 0 ? 'tag-red' : 'tag-yellow'}">${a.daysLeft <= 0 ? 'EXPIRED' : a.daysLeft + ' hari lagi'}</span></div>`
+                ).join('');
+            } else {
+                el('alertBtn').style.display = 'none';
+            }
+
+            renderInventory();
+        }
+
+        function renderInventory() {
+            const tbody = el('invBody');
+            if (!accounts.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="tbl-empty">Tidak ada akun di layanan ini</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = accounts.map(acc => {
+                const exp = acc.expiryDate ? new Date(acc.expiryDate) : null;
+                const now = new Date();
+                const days = exp ? Math.ceil((exp - now) / 86400000) : null;
+                const profiles = acc.profiles || [];
+                const used = profiles.filter(p => p.user).length;
+
+                return `<tr>
+                    <td><input type="checkbox" class="row-cb" value="${acc.id}"></td>
+                    <td class="cred-cell"><strong>${acc.email}</strong><small>🔑 ${acc.password}</small></td>
+                    <td>
+                        <button class="btn btn-outline btn-sm" onclick="showProfiles('${acc.id}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                            Manage Profiles
+                        </button>
+                    </td>
+                    <td>${days !== null ? `<span class="tbl-tag ${days <= 0 ? 'tag-red' : days <= 7 ? 'tag-yellow' : 'tag-green'}">${days <= 0 ? 'Expired' : days + ' Hari'}</span>` : '-'}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" onclick="showSell('${acc.id}')">Jual Akun</button>
+                        <button class="btn-icon" onclick="deleteAccount('${acc.id}')" style="margin-left:4px;" title="Hapus">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function filterInventory() {
+            const q = el('invSearch').value.toLowerCase();
+            el('invBody').querySelectorAll('tr').forEach(r => {
+                r.style.display = r.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        }
+
+        function toggleAll(checked) {
+            document.querySelectorAll('.row-cb').forEach(cb => cb.checked = checked);
+            el('bulkBar').classList.toggle('hidden', !checked);
+        }
+
+        document.addEventListener('change', e => {
+            if (e.target.classList.contains('row-cb')) {
+                el('bulkBar').classList.toggle('hidden', !document.querySelector('.row-cb:checked'));
+            }
+        });
+
+        function toggleAlerts() { el('alertPanel').classList.toggle('hidden'); }
+
+        // ═══ LAYANAN CRUD ═══
+        function showAddLayanan() {
+            el('layananModalTitle').textContent = 'Tambah Layanan';
+            el('layananModalLabel').textContent = 'Nama Layanan';
+            el('layananModalInput').value = '';
+            el('layananModalBtn').onclick = confirmAddLayanan;
+            el('layananModal').classList.remove('hidden');
+        }
+
+        function showRenameLayanan(name) {
+            el('layananModalTitle').textContent = 'Rename Layanan';
+            el('layananModalLabel').textContent = `Rename "${name}" menjadi:`;
+            el('layananModalInput').value = '';
+            el('layananModalBtn').onclick = () => confirmRenameLayanan(name);
+            el('layananModal').classList.remove('hidden');
+        }
+
+        async function confirmAddLayanan() {
+            const name = el('layananModalInput').value.trim();
+            if (!name) return;
+            const resp = await fetch('/api/stok/layanan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            if (resp.ok) { el('layananModal').classList.add('hidden'); showToast('Layanan ditambahkan'); loadDashboard(name); }
+            else { const e = await resp.json(); showToast(e.detail || 'Error'); }
+        }
+
+        async function confirmRenameLayanan(oldName) {
+            const newName = el('layananModalInput').value.trim();
+            if (!newName) return;
+            const resp = await fetch('/api/stok/layanan/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({old: oldName, new: newName}) });
+            if (resp.ok) { el('layananModal').classList.add('hidden'); showToast('Layanan di-rename'); loadDashboard(newName); if (document.querySelector('.view.active').id === 'view-settings') loadSettings(); }
+            else { const e = await resp.json(); showToast(e.detail || 'Error'); }
+        }
+
+        async function deleteLayanan(name) {
+            if (!confirm(`Hapus layanan "${name}" beserta semua datanya?`)) return;
+            await fetch(`/api/stok/layanan/${name}`, { method: 'DELETE' });
+            showToast('Layanan dihapus');
+            loadDashboard();
+            if (document.querySelector('.view.active').id === 'view-settings') loadSettings();
+        }
+
+        // ═══ IMPORT ═══
+        async function bulkImport() {
+            if (!currentView) return showToast('Pilih atau buat layanan terlebih dahulu');
+            const bulkData = el('importData').value.trim();
+            const durasi = el('importDays').value;
+            if (!bulkData) return showToast('Masukkan data akun');
+            const resp = await fetch('/api/stok/import', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({layanan: currentView, bulkData, durasi}) });
+            const data = await resp.json();
+            showToast(`${data.imported} akun berhasil diimport`);
+            el('importData').value = '';
+            loadDashboard(currentView);
+        }
+
+        // ═══ SELL FLOW ═══
+        function showSell(accId) {
+            sellTarget = accId;
+            const acc = accounts.find(a => a.id === accId);
+            el('sellBuyer').value = '';
+            el('sFull').checked = true;
+            el('slotPicker').classList.add('hidden');
+            if (acc && acc.profiles) {
+                el('slotPicker').innerHTML = acc.profiles.map(p =>
+                    `<label class="slot-option"><input type="radio" name="slotId" value="${p.id}">${avatarHtml(p, 24)}<span>${p.name} ${p.user ? '(' + p.user + ')' : ''}</span></label>`
+                ).join('');
+            }
+            loadBuyerSuggestions('sellBuyerSuggest');
+            el('sellModal').classList.remove('hidden');
+        }
+
+        document.addEventListener('change', e => {
+            if (e.target.name === 'sellType') el('slotPicker').classList.toggle('hidden', e.target.value !== 'slot');
+        });
+
+        async function loadBuyerSuggestions(dlId) {
+            const resp = await fetch('/api/stok/customers');
+            const customers = await resp.json();
+            el(dlId).innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+        }
+
+        async function confirmSell() {
+            const pembeli = el('sellBuyer').value.trim();
+            if (!pembeli) return showToast('Masukkan nama pembeli');
+            const type = document.querySelector('input[name="sellType"]:checked').value;
+            const body = { pembeli, isSlot: type === 'slot' };
+            if (type === 'slot') {
+                const r = document.querySelector('input[name="slotId"]:checked');
+                if (!r) return showToast('Pilih slot');
+                body.slotId = parseInt(r.value);
+            }
+            await fetch(`/api/stok/sell/${currentView}/${sellTarget}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            closeSellModal();
+            showToast('Akun berhasil dijual');
+            loadDashboard(currentView);
+        }
+
+        function closeSellModal() { el('sellModal').classList.add('hidden'); sellTarget = null; }
+
+        async function deleteAccount(accId) {
+            if (!confirm('Hapus akun ini?')) return;
+            await fetch(`/api/stok/account/${currentView}/${accId}`, { method: 'DELETE' });
+            showToast('Akun dihapus');
+            loadDashboard(currentView);
+        }
+
+        async function bulkSell() {
+            const ids = [...document.querySelectorAll('.row-cb:checked')].map(cb => cb.value);
+            const pembeli = el('bulkBuyer').value.trim();
+            if (!ids.length) return showToast('Pilih akun');
+            if (!pembeli) return showToast('Masukkan nama pembeli');
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'sell', layanan: currentView, ids, pembeli}) });
+            showToast(`${ids.length} akun dijual`);
+            loadDashboard(currentView);
+        }
+
+        async function bulkDelete() {
+            const ids = [...document.querySelectorAll('.row-cb:checked')].map(cb => cb.value);
+            if (!ids.length) return showToast('Pilih akun');
+            if (!confirm(`Hapus ${ids.length} akun?`)) return;
+            await fetch('/api/stok/bulk-action', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', layanan: currentView, ids}) });
+            showToast(`${ids.length} akun dihapus`);
+            loadDashboard(currentView);
+        }
+
+        // ═══ PROFILES ═══
+        function clickProfile(accId, profileId) {
+            const acc = accounts.find(a => a.id === accId);
+            if (!acc) return;
+            const p = acc.profiles.find(pr => pr.id === profileId);
+            if (!p) return;
+            if (p.pin) {
+                pinTarget = { accId, profileId };
+                el('pinAvatar').innerHTML = avatarHtml(p, 64);
+                el('pinProfileName').textContent = p.name || 'Profile ' + p.id;
+                el('pinInput').value = '';
+                el('pinError').classList.add('hidden');
+                el('pinModal').classList.remove('hidden');
+                setTimeout(() => el('pinInput').focus(), 100);
+            } else {
+                showProfileDetail(acc, p);
+            }
+        }
+
+        async function submitPin() {
+            if (!pinTarget) return;
+            try {
+                const resp = await fetch(`/api/stok/verify-pin/${currentView}/${pinTarget.accId}/${pinTarget.profileId}`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({pin: el('pinInput').value})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    el('pinModal').classList.add('hidden');
+                    showProfileDetail({email: data.account.email, password: data.account.password, expiryDate: data.account.expiryDate}, data.profile);
+                } else {
+                    el('pinError').classList.remove('hidden');
+                    el('pinInput').value = '';
+                    el('pinInput').focus();
+                }
+            } catch { el('pinError').classList.remove('hidden'); }
+        }
+
+        function showProfileDetail(acc, p) {
+            el('profileDetailTitle').textContent = p.name || 'Profile';
+            const exp = acc.expiryDate ? new Date(acc.expiryDate) : null;
+            el('profileDetailBody').innerHTML = `<div class="detail-card">
+                <div style="display:flex;justify-content:center;margin-bottom:16px;">${avatarHtml(p, 72)}</div>
+                <div class="detail-grid">
+                    <div class="detail-field"><span class="detail-label">Email</span><span class="detail-value">${acc.email}</span></div>
+                    <div class="detail-field"><span class="detail-label">Password</span><span class="detail-value">${acc.password}</span></div>
+                    <div class="detail-field"><span class="detail-label">Profile</span><span class="detail-value">${p.name}</span></div>
+                    <div class="detail-field"><span class="detail-label">Pembeli</span><span class="detail-value">${p.user || '-'}</span></div>
+                    <div class="detail-field"><span class="detail-label">PIN</span><span class="detail-value">${p.pin || '-'}</span></div>
+                    <div class="detail-field"><span class="detail-label">Expiry</span><span class="detail-value">${exp ? exp.toLocaleDateString('id-ID') : '-'}</span></div>
+                </div></div>`;
+            el('profileDetailModal').classList.remove('hidden');
+        }
+
+        function showProfiles(accId) {
+            const acc = accounts.find(a => a.id === accId);
+            if (!acc || !acc.profiles) return;
+            el('profileModalTitle').textContent = acc.email + ' — Profiles';
+            el('profileList').innerHTML = acc.profiles.map(p =>
+                `<div class="profile-edit-card">
+                    <div class="profile-edit-avatar" onclick="changeAvatar('${acc.id}', ${p.id})">
+                        ${avatarHtml(p, 56)}
+                        <div class="avatar-overlay">📷</div>
+                    </div>
+                    <div class="profile-fields">
+                        <input type="text" id="pn_${acc.id}_${p.id}" value="${p.name || ''}" placeholder="Nama profile">
+                        <input type="text" id="pb_${acc.id}_${p.id}" value="${p.user || ''}" placeholder="Nama pembeli">
+                        <input type="password" id="pp_${acc.id}_${p.id}" value="${p.pin || ''}" placeholder="PIN (opsional)">
+                        <input type="text" id="pa_${acc.id}_${p.id}" value="${p.avatar || ''}" placeholder="URL gambar avatar">
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="saveProfile('${acc.id}', ${p.id})">Simpan</button>
+                </div>`
+            ).join('');
+            el('profileModal').classList.remove('hidden');
+        }
+
+        function changeAvatar(accId, pid) {
+            const inp = el(`pa_${accId}_${pid}`);
+            inp.focus();
+            inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function closeProfileModal() { el('profileModal').classList.add('hidden'); }
+
+        async function saveProfile(accId, pid) {
+            await fetch(`/api/stok/profile/${currentView}/${accId}/${pid}`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    profileName: el(`pn_${accId}_${pid}`).value,
+                    buyerName: el(`pb_${accId}_${pid}`).value,
+                    pin: el(`pp_${accId}_${pid}`).value,
+                    avatar: el(`pa_${accId}_${pid}`).value
+                })
+            });
+            showToast('Profile disimpan');
+            loadDashboard(currentView);
+            closeProfileModal();
+        }
+
+        // ═══ HISTORY ═══
+        async function loadHistory() {
+            const resp = await fetch('/api/stok/history');
+            const data = await resp.json();
+            historyData = data.history;
+            renderHistory(historyData);
+            loadBuyerSuggestions('histBuyerSuggest');
+        }
+
+        function renderHistory(items) {
+            el('histBody').innerHTML = items.length ? items.map(h => {
+                const exp = h.expiryDate ? new Date(h.expiryDate) : null;
+                const now = new Date();
+                const days = exp ? Math.ceil((exp - now) / 86400000) : null;
+                return `<tr>
+                    <td>${h.date ? new Date(h.date).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '-'}</td>
+                    <td><span class="tbl-tag tag-purple">${h.layanan.toUpperCase()}</span></td>
+                    <td>${h.tipe}</td>
+                    <td>${h.pembeli}</td>
+                    <td>${days !== null ? (days > 0 ? `<span class="tbl-tag tag-green">Aktif (${days}d)</span>` : `<span class="tbl-tag tag-red">Expired</span>`) : '-'}</td>
+                </tr>`;
+            }).join('') : `<tr><td colspan="5" class="tbl-empty">Belum ada transaksi terekam.</td></tr>`;
+        }
+
+        function filterHistory() {
+            const q = el('histFilter').value.toLowerCase();
+            renderHistory(historyData.filter(h => (h.layanan + h.email + h.tipe + h.pembeli + (h.date || '')).toLowerCase().includes(q)));
+        }
+
+        function searchHistoryByBuyer() {
+            const q = el('histBuyerSearch').value.toLowerCase().trim();
+            if (!q) return renderHistory(historyData);
+            renderHistory(historyData.filter(h => h.pembeli.toLowerCase().includes(q)));
+        }
+
+        function printPDF() {
+            window.print();
+        }
+
+        // ═══ CUSTOMER ═══
+        async function loadCustomerSuggestions() {
+            const resp = await fetch('/api/stok/customers');
+            const customers = await resp.json();
+            el('custSuggest').innerHTML = customers.map(c => `<option value="${c.name}">`).join('');
+        }
+
+        async function checkCustomer() {
+            const name = el('custName').value.trim();
+            if (!name) return showToast('Masukkan nama customer');
+            const resp = await fetch(`/api/stok/customer-check?name=${encodeURIComponent(name)}`);
+            const data = await resp.json();
+            if (!data.purchases.length) {
+                el('custResult').innerHTML = `<div class="empty-state">
+                    <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                    <h3>Tidak Ditemukan</h3>
+                    <p>Tidak ada riwayat pembelian untuk "${name}".</p></div>`;
+                return;
+            }
+            el('custResult').innerHTML = `<div class="section-header" style="margin-top:24px;"><h2>Riwayat Pembelian — ${name}</h2></div>
+                <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Layanan</th><th>Email</th><th>Tipe</th><th>Tanggal</th><th>Sisa Garansi</th></tr></thead><tbody>` +
+                data.purchases.map(p => `<tr>
+                    <td><span class="tbl-tag tag-purple">${(p.layanan || '').toUpperCase()}</span></td>
+                    <td>${p.email || ''}</td>
+                    <td>${p.tipe || ''}</td>
+                    <td>${p.date ? new Date(p.date).toLocaleDateString('id-ID') : '-'}</td>
+                    <td>${p.daysLeft !== undefined ? (p.daysLeft > 0 ? `<span class="tbl-tag tag-green">${p.daysLeft} hari</span>` : '<span class="tbl-tag tag-red">Expired</span>') : '-'}</td>
+                </tr>`).join('') + '</tbody></table></div>';
+        }
+
+        // ═══ SETTINGS ═══
+        async function loadSettings() {
+            const resp = await fetch('/api/stok/settings');
+            const data = await resp.json();
+            el('setStoreName').value = data.storeName || '';
+            el('setStoreTag').value = data.storeTag || '';
+            updateBranding(data.storeName, data.storeTag);
+
+            const layResp = await fetch('/api/stok/layanan');
+            const layData = await layResp.json();
+            el('settingsServiceList').innerHTML = layData.map(l =>
+                `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+                    <span style="font-weight:600;">${l.toUpperCase()}</span>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn btn-outline btn-sm" onclick="showRenameLayanan('${l}')">Rename</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteLayanan('${l}')">Hapus</button>
+                    </div>
+                </div>`
+            ).join('') || '<p style="color:var(--text2);font-size:13px;">Belum ada layanan.</p>';
+        }
+
+        async function saveSettings() {
+            const storeName = el('setStoreName').value.trim();
+            const storeTag = el('setStoreTag').value.trim();
+            await fetch('/api/stok/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({storeName, storeTag}) });
+            showToast('Pengaturan disimpan');
+            updateBranding(storeName, storeTag);
+        }
+
+        function updateBranding(name, tag) {
+            el('sbStoreName').innerHTML = `${name || 'STORE'}<small>${tag || 'Management'}</small>`;
+            document.title = `${name || 'Stock'} | ${tag || 'Management'}`;
+        }
+
+        // ═══ INIT ═══
+        async function init() {
+            try {
+                const resp = await fetch('/api/stok/settings');
+                const data = await resp.json();
+                updateBranding(data.storeName, data.storeTag);
+            } catch {}
+            loadDashboard();
+        }
+
+        init();
+    </script>
+</body>
+</html>
