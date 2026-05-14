@@ -439,6 +439,7 @@
                     </table>
                 </div>
                 <div class="bulk-bar hidden" id="bulkBar">
+                    <button class="btn btn-outline btn-sm" onclick="bulkCopy()" style="margin-right:auto;">📋 Copy Selected</button>
                     <input type="text" id="bulkBuyer" placeholder="Nama pembeli...">
                     <button class="btn btn-primary btn-sm" onclick="bulkSell()">Jual Selected</button>
                     <button class="btn btn-danger btn-sm" onclick="bulkDelete()">Hapus Selected</button>
@@ -732,7 +733,7 @@
                 const profiles = acc.profiles || [];
                 const used = profiles.filter(p => p.user).length;
 
-                return `<tr>
+                return `<tr data-email="${acc.email}" data-password="${acc.password}" data-twofa="${acc.twofa || ''}">
                     <td><input type="checkbox" class="row-cb" value="${acc.id}"></td>
                     <td class="cred-cell" style="cursor:pointer;" onclick="copyCredential('${acc.email}','${acc.password}','${(acc.twofa || '').replace(/'/g, '\&#39;')}')" title="Klik untuk copy"><strong>${acc.email}</strong><small>🔑 ${acc.password}${acc.twofa ? ' | 🔐 ' + acc.twofa : ''}</small></td>
                     <td>
@@ -755,6 +756,20 @@
         function copyCredential(email, password, twofa) {
             const text = twofa ? `${email}|${password}|${twofa}` : `${email}|${password}`;
             navigator.clipboard.writeText(text).then(() => showToast('Kredensial disalin!')).catch(() => showToast('Gagal menyalin'));
+        }
+
+        function bulkCopy() {
+            const checked = document.querySelectorAll('.row-cb:checked');
+            if (!checked.length) return showToast('Pilih akun terlebih dahulu');
+            const lines = [];
+            checked.forEach(cb => {
+                const row = cb.closest('tr');
+                const email = row.dataset.email;
+                const password = row.dataset.password;
+                const twofa = row.dataset.twofa;
+                lines.push(twofa ? `${email}|${password}|${twofa}` : `${email}|${password}`);
+            });
+            navigator.clipboard.writeText(lines.join('\n')).then(() => showToast(`${lines.length} kredensial disalin!`)).catch(() => showToast('Gagal menyalin'));
         }
 
         function filterInventory() {
