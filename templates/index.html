@@ -75,9 +75,9 @@
                 <span class="email-address" id="emailAddress"></span>
             </div>
             <div class="email-toolbar-right">
-                <button id="changeTokenBtn" class="btn-scan" onclick="goBack()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                    <span>Ganti Token</span>
+                <button id="scanEmailBtn" class="btn-scan" onclick="scanEmail()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                    <span>Scan Email</span>
                 </button>
             </div>
         </div>
@@ -210,6 +210,35 @@
                 submitToken();
             }
         })();
+
+        async function scanEmail() {
+            if (!currentToken) return;
+            const btn = document.getElementById('scanEmailBtn');
+            const btnText = btn.querySelector('span');
+            const origText = btnText.textContent;
+            btn.disabled = true;
+            btnText.textContent = 'Scanning...';
+
+            const formData = new FormData();
+            formData.append('token', currentToken);
+
+            try {
+                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Error scanning');
+                    return;
+                }
+                const data = await resp.json();
+                mergeEmails(data.emails);
+                renderEmailList();
+            } catch (e) {
+                alert('Error connecting to server');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = origText;
+            }
+        }
 
         async function submitToken() {
             const token = document.getElementById('tokenInput').value.trim();
