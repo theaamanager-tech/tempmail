@@ -75,9 +75,9 @@
                 <span class="email-address" id="emailAddress"></span>
             </div>
             <div class="email-toolbar-right">
-                <button id="scanBtn" class="btn-scan">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                    <span id="scanBtnText">Scan Email</span>
+                <button id="changeTokenBtn" class="btn-scan" onclick="goBack()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    <span>Ganti Token</span>
                 </button>
             </div>
         </div>
@@ -88,7 +88,7 @@
                 <div class="empty-state" id="emptyState">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
                     <p>No emails yet</p>
-                    <p class="empty-sub">Click "Scan Email" to check for new messages</p>
+                    <p class="empty-sub">No messages found for this token</p>
                 </div>
             </div>
 
@@ -101,19 +101,13 @@
             </div>
         </div>
 
-        <!-- Scan notification bar -->
-        <div id="scanNotification" class="scan-notification hidden">
-            <span id="scanNotifText"></span>
-            <button class="btn-notif-scan" onclick="startScan()">Scan Again</button>
-        </div>
+
     </div>
 
     <script>
         let currentToken = '';
         let allEmails = [];
-        let scanTimer = null;
-        let scanCountdown = 0;
-        let pollInterval = null;
+
         let totpInterval = null;
         let totpSecret = null;
 
@@ -207,9 +201,6 @@
             });
         }
 
-        // ─── Init scan button ────────────────────────────────────
-        document.getElementById('scanBtn').onclick = startScan;
-
         // ─── Check URL for auto-scan ────────────────────────────
         (function() {
             const params = new URLSearchParams(window.location.search);
@@ -244,7 +235,6 @@
                 document.getElementById('emailAddress').textContent = data.email;
                 mergeEmails(data.emails);
                 renderEmailList();
-                startPolling();
             } catch (e) {
                 alert('Error connecting to server');
                 goBack();
@@ -363,72 +353,20 @@
             }
         }
 
-        function startPolling() {
-            stopPolling();
-            scanCountdown = 30;
-            const btn = document.getElementById('scanBtn');
-            const btnText = document.getElementById('scanBtnText');
-            btn.classList.add('scanning');
-            btnText.textContent = `Scanning... ${scanCountdown}s`;
-            btn.onclick = stopPolling;
 
-            pollInterval = setInterval(() => doScan(), 5000);
-
-            scanTimer = setInterval(() => {
-                scanCountdown--;
-                btnText.textContent = `Scanning... ${scanCountdown}s`;
-                if (scanCountdown <= 0) {
-                    stopPolling();
-                }
-            }, 1000);
-        }
-
-        function stopPolling() {
-            if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-            if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
-            scanCountdown = 0;
-            const btn = document.getElementById('scanBtn');
-            const btnText = document.getElementById('scanBtnText');
-            btn.classList.remove('scanning');
-            btnText.textContent = 'Scan Email';
-            btn.onclick = startScan;
-        }
-
-        function startScan() {
-            document.getElementById('scanNotification').classList.add('hidden');
-            doScan().then(() => startPolling());
-        }
-
-        async function doScan() {
-            const formData = new FormData();
-            formData.append('token', currentToken);
-            try {
-                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    mergeEmails(data.emails);
-                    renderEmailList();
-                }
-            } catch (e) {
-                console.error('Scan error', e);
-            }
-        }
 
         function goBack() {
             document.getElementById('emailSection').classList.add('hidden');
             document.getElementById('tokenSection').classList.remove('hidden');
-            document.getElementById('scanNotification').classList.add('hidden');
             allEmails = [];
             currentToken = '';
             document.getElementById('tokenInput').value = '';
-            stopPolling();
-            document.getElementById('scanBtn').onclick = startScan;
             document.getElementById('emailAddress').textContent = '';
             document.getElementById('emailList').innerHTML = `
                 <div class="empty-state" id="emptyState">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
                     <p>No emails yet</p>
-                    <p class="empty-sub">Click "Scan Email" to check for new messages</p>
+                    <p class="empty-sub">No messages found for this token</p>
                 </div>
             `;
             document.getElementById('emailDetail').innerHTML = `
