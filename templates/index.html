@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="dark">
+    <!-- Fullscreen Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner-wrap">
+            <div class="loading-spinner"></div>
+            <p class="loading-text" id="loadingText">Scanning email...</p>
+        </div>
+    </div>
+
     <header class="topbar">
         <div class="topbar-left">
             <svg class="logo-icon" id="logoIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="cursor:pointer"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>
@@ -233,6 +241,14 @@
             }
         }
 
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text || 'Scanning email...';
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
         async function scanEmail() {
             if (!currentToken || isScanning) return;
             const btn = document.getElementById('scanEmailBtn');
@@ -246,10 +262,13 @@
             const maxAttempts = Math.ceil(maxDuration / interval);
             let foundNew = false;
 
+            showLoading('Scanning email...');
+
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
                 if (scanAborted) break;
                 const remaining = maxDuration - attempt * interval;
                 btnText.textContent = `Scanning... ${remaining}s`;
+                document.getElementById('loadingText').textContent = `Scanning email... ${remaining}s`;
 
                 const formData = new FormData();
                 formData.append('token', currentToken);
@@ -281,6 +300,8 @@
                 }
             }
 
+            hideLoading();
+
             if (!foundNew && !scanAborted) {
                 btnText.textContent = 'No new email';
                 setTimeout(() => { btnText.textContent = origText; }, 2000);
@@ -298,6 +319,8 @@
             document.getElementById('tokenSection').classList.add('hidden');
             document.getElementById('emailSection').classList.remove('hidden');
 
+            showLoading('Loading emails...');
+
             const formData = new FormData();
             formData.append('token', token);
 
@@ -307,6 +330,7 @@
                     const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
                     if (!resp.ok) {
                         const err = await resp.json().catch(() => ({}));
+                        hideLoading();
                         alert(err.detail || 'Invalid token');
                         goBack();
                         return;
@@ -315,6 +339,7 @@
                     document.getElementById('emailAddress').textContent = data.email;
                     mergeEmails(data.emails);
                     renderEmailList();
+                    hideLoading();
                     return;
                 } catch (e) {
                     lastError = e;
@@ -323,6 +348,7 @@
                     }
                 }
             }
+            hideLoading();
             alert('Gagal terhubung ke server. Silakan coba lagi.');
             goBack();
         }
