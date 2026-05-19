@@ -143,7 +143,7 @@ async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
         headers = {"Authorization": f"Bearer {token}"}
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         query = f"to:{email_addr} after:{cutoff.strftime('%Y/%m/%d')}"
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 "https://gmail.googleapis.com/gmail/v1/users/me/messages",
                 headers=headers,
@@ -188,7 +188,7 @@ class SupabaseClient:
         }
 
     async def select(self, table: str, params: dict | None = None) -> list[dict]:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 f"{self.url}/rest/v1/{table}",
                 headers=self.headers,
@@ -198,7 +198,7 @@ class SupabaseClient:
             return resp.json()
 
     async def insert(self, table: str, data: dict) -> dict | None:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 f"{self.url}/rest/v1/{table}",
                 headers=self.headers,
@@ -213,7 +213,7 @@ class SupabaseClient:
             return result[0] if result else data
 
     async def delete(self, table: str, params: dict) -> None:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.delete(
                 f"{self.url}/rest/v1/{table}",
                 headers=self.headers,
@@ -226,7 +226,7 @@ class SupabaseClient:
         query = {"select": "id", "limit": "0"}
         if params:
             query.update(params)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(
                 f"{self.url}/rest/v1/{table}",
                 headers=headers,
@@ -243,7 +243,7 @@ class SupabaseClient:
 
     async def upsert(self, table: str, data: dict, on_conflict: str = "key") -> dict:
         headers = {**self.headers, "Prefer": "resolution=merge-duplicates,return=representation"}
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
                 f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}",
                 headers=headers,

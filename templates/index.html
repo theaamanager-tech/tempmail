@@ -75,8 +75,8 @@
                 <span class="email-address" id="emailAddress"></span>
             </div>
             <div class="email-toolbar-right">
-                <button id="scanEmailBtn" class="btn-scan" onclick="scanEmail()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                <button id="scanEmailBtn" class="btn-scan" onclick="toggleScan()">
+                    <svg id="scanIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                     <span>Scan Email</span>
                 </button>
             </div>
@@ -211,33 +211,83 @@
             }
         })();
 
+        async function fetchWithTimeout(url, options, timeoutMs = 15000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const resp = await fetch(url, { ...options, signal: controller.signal });
+                return resp;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        let scanAborted = false;
+        let isScanning = false;
+
+        function toggleScan() {
+            if (isScanning) {
+                scanAborted = true;
+            } else {
+                scanEmail();
+            }
+        }
+
         async function scanEmail() {
-            if (!currentToken) return;
+            if (!currentToken || isScanning) return;
             const btn = document.getElementById('scanEmailBtn');
             const btnText = btn.querySelector('span');
             const origText = btnText.textContent;
-            btn.disabled = true;
-            btnText.textContent = 'Scanning...';
+            isScanning = true;
+            scanAborted = false;
 
-            const formData = new FormData();
-            formData.append('token', currentToken);
+            const maxDuration = 30;
+            const interval = 5;
+            const maxAttempts = Math.ceil(maxDuration / interval);
+            let foundNew = false;
 
-            try {
-                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
-                if (!resp.ok) {
-                    const err = await resp.json();
-                    alert(err.detail || 'Error scanning');
-                    return;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                if (scanAborted) break;
+                const remaining = maxDuration - attempt * interval;
+                btnText.textContent = `Scanning... ${remaining}s`;
+
+                const formData = new FormData();
+                formData.append('token', currentToken);
+
+                try {
+                    const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        alert(err.detail || 'Error scanning');
+                        break;
+                    }
+                    const data = await resp.json();
+                    if (data.emails && data.emails.length > 0) {
+                        mergeEmails(data.emails);
+                        renderEmailList();
+                        foundNew = true;
+                        break;
+                    }
+                } catch (e) {
+                    if (e.name === 'AbortError') {
+                        // timeout on this attempt, will retry
+                    } else {
+                        // network error, will retry
+                    }
                 }
-                const data = await resp.json();
-                mergeEmails(data.emails);
-                renderEmailList();
-            } catch (e) {
-                alert('Error connecting to server');
-            } finally {
-                btn.disabled = false;
+
+                if (attempt < maxAttempts - 1 && !scanAborted) {
+                    await new Promise(r => setTimeout(r, interval * 1000));
+                }
+            }
+
+            if (!foundNew && !scanAborted) {
+                btnText.textContent = 'No new email';
+                setTimeout(() => { btnText.textContent = origText; }, 2000);
+            } else {
                 btnText.textContent = origText;
             }
+            isScanning = false;
         }
 
         async function submitToken() {
@@ -248,26 +298,33 @@
             document.getElementById('tokenSection').classList.add('hidden');
             document.getElementById('emailSection').classList.remove('hidden');
 
-            // Immediate scan
             const formData = new FormData();
             formData.append('token', token);
 
-            try {
-                const resp = await fetch('/api/scan', { method: 'POST', body: formData });
-                if (!resp.ok) {
-                    const err = await resp.json();
-                    alert(err.detail || 'Invalid token');
-                    goBack();
+            let lastError = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        alert(err.detail || 'Invalid token');
+                        goBack();
+                        return;
+                    }
+                    const data = await resp.json();
+                    document.getElementById('emailAddress').textContent = data.email;
+                    mergeEmails(data.emails);
+                    renderEmailList();
                     return;
+                } catch (e) {
+                    lastError = e;
+                    if (attempt < 2) {
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
                 }
-                const data = await resp.json();
-                document.getElementById('emailAddress').textContent = data.email;
-                mergeEmails(data.emails);
-                renderEmailList();
-            } catch (e) {
-                alert('Error connecting to server');
-                goBack();
             }
+            alert('Gagal terhubung ke server. Silakan coba lagi.');
+            goBack();
         }
 
         function mergeEmails(newEmails) {
