@@ -230,15 +230,36 @@
             }
         }
 
-        let scanAborted = false;
         let isScanning = false;
+        let cooldownTimer = null;
+        let cooldownEnd = 0;
 
         function toggleScan() {
-            if (isScanning) {
-                scanAborted = true;
-            } else {
-                scanEmail();
+            if (isScanning) return;
+            if (Date.now() < cooldownEnd) return;
+            scanEmail();
+        }
+
+        function startCooldown(seconds) {
+            const btn = document.getElementById('scanEmailBtn');
+            const btnText = btn.querySelector('span');
+            cooldownEnd = Date.now() + seconds * 1000;
+            btn.disabled = true;
+            btn.classList.add('btn-scan-cooldown');
+
+            function tick() {
+                const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
+                if (remaining <= 0) {
+                    btnText.textContent = 'Scan Email';
+                    btn.disabled = false;
+                    btn.classList.remove('btn-scan-cooldown');
+                    cooldownTimer = null;
+                    return;
+                }
+                btnText.textContent = `Scan Email (${remaining}s)`;
+                cooldownTimer = setTimeout(tick, 1000);
             }
+            tick();
         }
 
         function showLoading(text) {
@@ -253,63 +274,64 @@
             if (!currentToken || isScanning) return;
             const btn = document.getElementById('scanEmailBtn');
             const btnText = btn.querySelector('span');
-            const origText = btnText.textContent;
             isScanning = true;
-            scanAborted = false;
-
-            const maxDuration = 30;
-            const interval = 5;
-            const maxAttempts = Math.ceil(maxDuration / interval);
-            let foundNew = false;
 
             showLoading('Scanning email...');
+            btnText.textContent = 'Scanning...';
 
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                if (scanAborted) break;
-                const remaining = maxDuration - attempt * interval;
-                btnText.textContent = `Scanning... ${remaining}s`;
-                document.getElementById('loadingText').textContent = `Scanning email... ${remaining}s`;
+            const formData = new FormData();
+            formData.append('token', currentToken);
 
-                const formData = new FormData();
-                formData.append('token', currentToken);
-
-                try {
-                    const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
-                    if (!resp.ok) {
-                        const err = await resp.json().catch(() => ({}));
-                        alert(err.detail || 'Error scanning');
-                        break;
-                    }
-                    const data = await resp.json();
-                    if (data.emails && data.emails.length > 0) {
-                        mergeEmails(data.emails);
-                        renderEmailList();
-                        foundNew = true;
-                        break;
-                    }
-                } catch (e) {
-                    if (e.name === 'AbortError') {
-                        // timeout on this attempt, will retry
-                    } else {
-                        // network error, will retry
-                    }
+            try {
+                const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                if (resp.status === 429) {
+                    const err = await resp.json().catch(() => ({}));
+                    hideLoading();
+                    startCooldown(err.retry_after || 30);
+                    isScanning = false;
+                    return;
                 }
-
-                if (attempt < maxAttempts - 1 && !scanAborted) {
-                    await new Promise(r => setTimeout(r, interval * 1000));
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    hideLoading();
+                    alert(err.detail || 'Error scanning');
+                    btnText.textContent = 'Scan Email';
+                    isScanning = false;
+                    return;
                 }
+                const data = await resp.json();
+                if (data.emails && data.emails.length > 0) {
+                    mergeEmails(data.emails);
+                    renderEmailList();
+                } else {
+                    btnText.textContent = 'No new email';
+                    setTimeout(() => {
+                        if (!isScanning && Date.now() >= cooldownEnd) {
+                            btnText.textContent = 'Scan Email';
+                        }
+                    }, 2000);
+                }
+            } catch (e) {
+                btnText.textContent = 'Scan Email';
             }
 
             hideLoading();
-
-            if (!foundNew && !scanAborted) {
-                btnText.textContent = 'No new email';
-                setTimeout(() => { btnText.textContent = origText; }, 2000);
-            } else {
-                btnText.textContent = origText;
-            }
             isScanning = false;
+            startCooldown(30);
         }
+
+        // Pause scanning when tab is hidden
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && cooldownTimer) {
+                clearTimeout(cooldownTimer);
+                cooldownTimer = null;
+            } else if (!document.hidden && cooldownEnd > Date.now()) {
+                const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
+                if (remaining > 0) {
+                    startCooldown(remaining);
+                }
+            }
+        });
 
         async function submitToken() {
             const token = document.getElementById('tokenInput').value.trim();
@@ -323,6 +345,7 @@
 
             const formData = new FormData();
             formData.append('token', token);
+            formData.append('skip_cooldown', 'true');
 
             let lastError = null;
             for (let attempt = 0; attempt < 3; attempt++) {
