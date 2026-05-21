@@ -9,6 +9,7 @@ import random
 import hashlib
 import email.utils
 import uuid
+import time
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 
@@ -62,6 +63,14 @@ def _format_date(val: str | None) -> str:
 # ─── Gmail API Helpers ────────────────────────────────────────────
 
 _gmail_token_cache: dict = {"access_token": "", "expires_at": 0.0}
+
+# Cache: email_addr -> {"emails": [...], "fetched_at": timestamp}
+_gmail_email_cache: dict = {}
+GMAIL_CACHE_TTL = 30  # seconds
+
+# Cooldown: token -> last_scan_timestamp
+_scan_cooldown: dict = {}
+SCAN_COOLDOWN_SECONDS = 30
 
 
 async def _get_gmail_access_token() -> str:
@@ -137,7 +146,7 @@ def _parse_gmail_message(msg_id: str, msg: dict) -> dict:
     }
 
 
-async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
+async def _fetch_gmail_emails_uncached(email_addr: str) -> list[dict]:
     try:
         token = await _get_gmail_access_token()
         headers = {"Authorization": f"Bearer {token}"}
@@ -172,6 +181,16 @@ async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
             return [r for r in results if r is not None]
     except Exception:
         return []
+
+
+async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
+    now = time.monotonic()
+    cached = _gmail_email_cache.get(email_addr)
+    if cached and (now - cached["fetched_at"]) < GMAIL_CACHE_TTL:
+        return cached["emails"]
+    emails = await _fetch_gmail_emails_uncached(email_addr)
+    _gmail_email_cache[email_addr] = {"emails": emails, "fetched_at": now}
+    return emails
 
 
 # ─── Supabase REST Client ────────────────────────────────────────
@@ -384,7 +403,24 @@ async def index(request: Request, db=Depends(get_db)):
 
 
 @app.post("/api/scan")
-async def scan_token(token: str = Form(...), db=Depends(get_db)):
+async def scan_token(
+    token: str = Form(...),
+    skip_cooldown: bool = Form(False),
+    db=Depends(get_db),
+):
+    now = time.monotonic()
+    last_scan = _scan_cooldown.get(token, 0.0)
+    remaining = SCAN_COOLDOWN_SECONDS - (now - last_scan)
+    if remaining > 0 and not skip_cooldown:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Cooldown active",
+                "retry_after": round(remaining),
+            },
+        )
+    _scan_cooldown[token] = now
+
     if USE_SUPABASE:
         rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email"})
         if not rows:

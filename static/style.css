@@ -318,7 +318,13 @@ body.dark {
     color: #000;
     cursor: not-allowed;
 }
-.btn-scan:disabled { opacity: 0.7; }
+.btn-scan:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-scan.btn-scan-cooldown {
+    background: var(--surface2);
+    color: var(--text2);
+    cursor: not-allowed;
+}
+.btn-scan.btn-scan-cooldown:hover { background: var(--surface2); }
 
 .gmail-layout {
     display: flex;
