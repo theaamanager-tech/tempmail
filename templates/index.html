@@ -253,6 +253,8 @@
         let isScanning = false;
         let cooldownTimer = null;
         let cooldownEnd = 0;
+        let pollTimer = null;
+        let isPolling = false;
 
         function toggleScan() {
             if (isScanning) return;
@@ -340,6 +342,34 @@
             startCooldown(30);
         }
 
+        // ─── Auto-polling ───────────────────────────────────────────
+        function startPolling() {
+            stopPolling();
+            isPolling = true;
+            pollTimer = setInterval(async () => {
+                if (isScanning || !currentToken || Date.now() < cooldownEnd) return;
+                const formData = new FormData();
+                formData.append('token', currentToken);
+                try {
+                    const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                    if (resp.status === 429) return;
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (data.emails && data.emails.length > 0) {
+                        const before = allEmails.length;
+                        mergeEmails(data.emails);
+                        if (allEmails.length > before) {
+                            renderEmailList();
+                        }
+                    }
+                } catch (e) {}
+            }, 10000);
+        }
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            isPolling = false;
+        }
+
         // Pause scanning when tab is hidden
         document.addEventListener('visibilitychange', function() {
             if (document.hidden && cooldownTimer) {
@@ -383,6 +413,7 @@
                     mergeEmails(data.emails);
                     renderEmailList();
                     hideLoading();
+                    startPolling();
                     return;
                 } catch (e) {
                     lastError = e;
@@ -516,6 +547,7 @@
             allEmails = [];
             currentToken = '';
             document.getElementById('tokenInput').value = '';
+            stopPolling();
             document.getElementById('emailAddress').textContent = '';
             document.getElementById('emailList').innerHTML = `
                 <div class="empty-state" id="emptyState">
