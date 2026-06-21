@@ -9,46 +9,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
     (function(){
-      var mode = "auto";
-      var bgList = [
-        "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
-        "/bg/halloween-scene-illustration-anime-style.jpg",
-        "/bg/anime-style-mythical-dragon-creature.jpg",
-        "/bg/mythical-dragon-beast-anime-style.jpg",
-        "/bg/illustration-anime-character-rain.jpg"
-      ];
-      function setBg(imgUrl) {
-        document.documentElement.style.setProperty("--bg-img", "url(" + imgUrl + ")");
-      }
-      if (mode === "off") {
-        document.documentElement.style.setProperty("--bg-img", "none");
-      } else {
-        var idx = localStorage.getItem("xincro_bg_idx");
-        idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
-        localStorage.setItem("xincro_bg_idx", idx);
-        setBg(bgList[idx]);
-        if (mode === "auto") {
-          setInterval(function(){
-            idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
-            localStorage.setItem("xincro_bg_idx", idx);
-            setBg(bgList[idx]);
-          }, 120 * 60 * 1000);
-        }
-      }
+      // simple: no bg rotator needed, CSS handles it
     })();
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg: #0D0E10;
-            --bg2: #121614;
-            --surface: rgba(18, 22, 20, 0.65);
-            --surface2: rgba(18, 22, 20, 0.8);
-            --border: rgba(207, 238, 230, 0.08);
-            --text: #CFEEE6;
-            --text2: rgba(207, 238, 230, 0.5);
-            --primary: #28C39D;
-            --primary2: #1a9a7a;
+            --bg: #0a0a0f;
+            --bg2: #0d0d1a;
+            --surface: rgba(26, 10, 46, 0.55);
+            --surface2: rgba(26, 10, 46, 0.75);
+            --border: rgba(232, 223, 245, 0.08);
+            --text: #e8dff5;
+            --text2: rgba(232, 223, 245, 0.5);
+            --primary: #00d4aa;
+            --primary2: #2ee0c0;
             --green: #2ecc71;
             --green2: #27ae60;
             --red: #f85149;
