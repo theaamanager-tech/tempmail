@@ -107,6 +107,10 @@
                     <svg id="scanIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                     <span>Scan Email</span>
                 </button>
+                <span id="pollIndicator" style="display:none;font-size:11px;color:var(--text2);align-items:center;gap:4px;">
+                    <span style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse 2s ease-in-out infinite;"></span>
+                    auto
+                </span>
             </div>
         </div>
 
@@ -297,6 +301,7 @@
             const btn = document.getElementById('scanEmailBtn');
             const btnText = btn.querySelector('span');
             isScanning = true;
+            stopPolling();
 
             showLoading('Scanning email...');
             btnText.textContent = 'Scanning...';
@@ -342,11 +347,15 @@
             startCooldown(30);
         }
 
-        // ─── Auto-polling ───────────────────────────────────────────
+        // ─── Auto-polling (setiap 30 detik, hanya tab aktif) ──────
         function startPolling() {
             stopPolling();
+            if (document.hidden) return; // jangan polling kalau tab tidak aktif
             isPolling = true;
+            var pi = document.getElementById('pollIndicator');
+            if (pi) pi.style.display = 'flex';
             pollTimer = setInterval(async () => {
+                if (document.hidden) { stopPolling(); return; }
                 if (isScanning || !currentToken || Date.now() < cooldownEnd) return;
                 const formData = new FormData();
                 formData.append('token', currentToken);
@@ -363,12 +372,19 @@
                         }
                     }
                 } catch (e) {}
-            }, 10000);
+            }, 30000);
         }
         function stopPolling() {
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
             isPolling = false;
+            var pi = document.getElementById('pollIndicator');
+            if (pi) pi.style.display = 'none';
         }
+        // Stop polling when tab hidden, resume when visible
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) { stopPolling(); }
+            else if (currentToken && !isPolling) { startPolling(); }
+        });
 
         // Pause scanning when tab is hidden
         document.addEventListener('visibilitychange', function() {

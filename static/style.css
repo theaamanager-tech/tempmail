@@ -92,6 +92,10 @@ body.dark {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
 .loading-text {
     color: var(--text2);
     font-size: 14px;
