@@ -726,7 +726,6 @@ body.dark {
     flex: 1;
     margin-left: 260px;
     padding: 32px 40px;
-    max-width: 960px;
 }
 
 /* ─── Form Elements ──────────────────────────────────────── */
@@ -897,6 +896,14 @@ body.dark {
 }
 .accounts-table tbody tr:last-child td {
     border-bottom: none;
+}
+.btn-pagination:hover {
+    background: rgba(40, 195, 157, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.btn-pagination:active {
+    transform: scale(0.96);
 }
 .token-cell code {
     background: rgba(13, 14, 16, 0.6);

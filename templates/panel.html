@@ -218,21 +218,16 @@
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="accountsBody">
-                            {% for acc in accounts %}
-                            <tr data-id="{{ acc.id }}" data-email="{{ acc.email }}" data-token="{{ acc.token }}">
-                                <td>{{ acc.email }}</td>
-                                <td class="token-cell"><code onclick="copyToken('{{ acc.token }}')" title="Click to copy token" style="cursor:pointer;">{{ acc.token[:12] }}...</code></td>
-                                <td>{{ acc.created_at }}</td>
-                                <td class="actions-cell">
-                                    <button class="btn-sm btn-copy" onclick="copyEmailToken('{{ acc.email }}', '{{ acc.token }}')" title="Copy email | token">Copy</button>
-                                    <button class="btn-sm btn-scan-link" onclick="openScan('{{ acc.token }}')" title="Scan for emails">Scan</button>
-                                    <button class="btn-sm btn-danger" onclick="deleteAccount('{{ acc.id }}', this)" title="Delete">Del</button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
+                        <tbody id="accountsBody"></tbody>
                     </table>
+                    <div id="accountsPagination" class="pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);gap:8px;flex-wrap:wrap;">
+                        <span id="accountsInfo" style="font-size:12px;color:var(--text2);"></span>
+                        <div style="display:flex;gap:6px;align-items:center;">
+                            <button id="accountsPrevBtn" class="btn-pagination" onclick="changeAccountsPage(-1)" style="display:none;padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">‹ Prev</button>
+                            <span id="accountsPageInfo" style="font-size:12px;color:var(--text2);font-weight:600;min-width:60px;text-align:center;"></span>
+                            <button id="accountsNextBtn" class="btn-pagination" onclick="changeAccountsPage(1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">Next ›</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -735,12 +730,29 @@ Response: {
             }
         }
 
+        // ─── Accounts Pagination ───────────────────────────────────
+        const ACCOUNTS_PER_PAGE = 50;
+        let allAccounts = [];
+        let accountsPage = 1;
+
         async function refreshAccounts() {
             const resp = await fetch('/api/accounts', { credentials: 'include' });
-            const accounts = await resp.json();
+            allAccounts = await resp.json();
+            accountsPage = 1;
+            renderAccountsPage();
+        }
+
+        function renderAccountsPage() {
             const body = document.getElementById('accountsBody');
+            const total = allAccounts.length;
+            const totalPages = Math.max(1, Math.ceil(total / ACCOUNTS_PER_PAGE));
+            if (accountsPage > totalPages) accountsPage = totalPages;
+            const start = (accountsPage - 1) * ACCOUNTS_PER_PAGE;
+            const end = Math.min(start + ACCOUNTS_PER_PAGE, total);
+            const pageItems = allAccounts.slice(start, end);
+
             body.innerHTML = '';
-            accounts.forEach(acc => {
+            pageItems.forEach(acc => {
                 const tr = document.createElement('tr');
                 tr.dataset.id = acc.id;
                 tr.dataset.email = acc.email;
@@ -757,6 +769,26 @@ Response: {
                 `;
                 body.appendChild(tr);
             });
+
+            // Update pagination UI
+            document.getElementById('accountsInfo').textContent = total > 0
+                ? `Showing ${start+1}-${end} of ${total} accounts`
+                : 'No accounts';
+            document.getElementById('accountsPageInfo').textContent = totalPages > 1
+                ? `Page ${accountsPage} of ${totalPages}`
+                : '';
+            document.getElementById('accountsPrevBtn').style.display = accountsPage > 1 ? 'inline-flex' : 'none';
+            document.getElementById('accountsNextBtn').style.display = accountsPage < totalPages ? 'inline-flex' : 'none';
+            // Re-apply search filter
+            filterAccounts();
+        }
+
+        function changeAccountsPage(delta) {
+            const totalPages = Math.max(1, Math.ceil(allAccounts.length / ACCOUNTS_PER_PAGE));
+            const newPage = accountsPage + delta;
+            if (newPage < 1 || newPage > totalPages) return;
+            accountsPage = newPage;
+            renderAccountsPage();
         }
 
         function filterAccounts() {
@@ -766,6 +798,18 @@ Response: {
                 const token = tr.dataset.token || '';
                 tr.style.display = (email.includes(q) || token.includes(q)) ? '' : 'none';
             });
+            // Update info text to reflect filtered results
+            const visible = [...document.querySelectorAll('#accountsBody tr')].filter(t => t.style.display !== 'none').length;
+            const total = allAccounts.length;
+            const start = (accountsPage - 1) * ACCOUNTS_PER_PAGE + 1;
+            if (q) {
+                document.getElementById('accountsInfo').textContent = `${visible} matching accounts`;
+            } else {
+                const end = Math.min(accountsPage * ACCOUNTS_PER_PAGE, total);
+                document.getElementById('accountsInfo').textContent = total > 0
+                    ? `Showing ${start}-${end} of ${total} accounts`
+                    : 'No accounts';
+            }
         }
 
         async function addDomain() {
@@ -952,6 +996,8 @@ Response: {
 
         // Load API keys on page load
         refreshApiKeys();
+        // Load accounts with pagination
+        refreshAccounts();
 
         // ─── Password Generator ───────────────────────────────────
         function generatePasswords() {
