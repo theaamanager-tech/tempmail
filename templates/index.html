@@ -103,13 +103,13 @@
                 <span class="email-address" id="emailAddress"></span>
             </div>
             <div class="email-toolbar-right">
-                <button id="scanEmailBtn" class="btn-scan" onclick="toggleScan()">
-                    <svg id="scanIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                    <span>Scan Email</span>
+                <button id="monitorBtn" class="btn-scan" onclick="toggleMonitor()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <span>Start Monitoring</span>
                 </button>
-                <span id="pollIndicator" style="display:none;font-size:11px;color:var(--text2);align-items:center;gap:5px;">
-                    <span id="pollDot" style="width:6px;height:6px;border-radius:50%;background:var(--primary);"></span>
-                    <span id="pollText">auto 30s</span>
+                <span id="monitorIndicator" style="display:none;font-size:11px;color:var(--text2);align-items:center;gap:5px;">
+                    <span id="monitorDot" style="width:6px;height:6px;border-radius:50%;background:var(--primary);"></span>
+                    <span id="monitorCountdown">30s</span>
                 </span>
             </div>
         </div>
@@ -254,38 +254,74 @@
             }
         }
 
-        let isScanning = false;
-        let cooldownTimer = null;
-        let cooldownEnd = 0;
-        let pollTimer = null;
-        let isPolling = false;
+        let isMonitoring = false;
+        let monitorTimer = null;
+        let fetchTimer = null;
+        let monitorCount = 30;
 
-        function toggleScan() {
-            if (isScanning) return;
-            if (Date.now() < cooldownEnd) return;
-            scanEmail();
+        function toggleMonitor() {
+            if (isMonitoring) {
+                stopMonitoring();
+                return;
+            }
+            startMonitoring();
         }
 
-        function startCooldown(seconds) {
-            const btn = document.getElementById('scanEmailBtn');
-            const btnText = btn.querySelector('span');
-            cooldownEnd = Date.now() + seconds * 1000;
-            btn.disabled = true;
-            btn.classList.add('btn-scan-cooldown');
+        function startMonitoring() {
+            if (!currentToken) return;
+            isMonitoring = true;
+            monitorCount = 30;
+            var btn = document.getElementById('monitorBtn');
+            var bt = btn.querySelector('span');
+            bt.textContent = 'Stop Monitoring';
+            btn.classList.add('scanning');
 
-            function tick() {
-                const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
-                if (remaining <= 0) {
-                    btnText.textContent = 'Scan Email';
-                    btn.disabled = false;
-                    btn.classList.remove('btn-scan-cooldown');
-                    cooldownTimer = null;
-                    return;
+            var ind = document.getElementById('monitorIndicator');
+            var dot = document.getElementById('monitorDot');
+            var cd = document.getElementById('monitorCountdown');
+            if (ind) ind.style.display = 'flex';
+            if (dot) dot.style.background = 'var(--primary)';
+            if (cd) cd.textContent = '30s';
+
+            // Fetch pertama langsung
+            doFetch();
+
+            // Countdown setiap 1 detik
+            monitorTimer = setInterval(function() {
+                monitorCount--;
+                if (cd) cd.textContent = monitorCount + 's';
+                if (dot) {
+                    if (monitorCount <= 5) {
+                        dot.style.background = '#f85149';
+                        dot.style.animation = 'pulse 1s ease-in-out infinite';
+                    } else {
+                        dot.style.background = 'var(--primary)';
+                        dot.style.animation = '';
+                    }
                 }
-                btnText.textContent = `Scan Email (${remaining}s)`;
-                cooldownTimer = setTimeout(tick, 1000);
-            }
-            tick();
+                if (monitorCount <= 0) {
+                    stopMonitoring();
+                    if (bt) bt.textContent = 'Start Monitoring';
+                    btn.classList.remove('scanning');
+                }
+            }, 1000);
+
+            // Fetch setiap 5 detik
+            fetchTimer = setInterval(function() {
+                if (!isMonitoring) return;
+                doFetch();
+            }, 5000);
+        }
+
+        function stopMonitoring() {
+            isMonitoring = false;
+            if (monitorTimer) { clearInterval(monitorTimer); monitorTimer = null; }
+            if (fetchTimer) { clearInterval(fetchTimer); fetchTimer = null; }
+            var btn = document.getElementById('monitorBtn');
+            if (btn) btn.querySelector('span').textContent = 'Start Monitoring';
+            btn.classList.remove('scanning');
+            var ind = document.getElementById('monitorIndicator');
+            if (ind) ind.style.display = 'none';
         }
 
         function showLoading(text) {
@@ -296,110 +332,21 @@
             document.getElementById('loadingOverlay').classList.add('hidden');
         }
 
-        async function scanEmail() {
-            if (!currentToken || isScanning) return;
-            const btn = document.getElementById('scanEmailBtn');
-            const btnText = btn.querySelector('span');
-            isScanning = true;
-            stopPolling();
-
-            showLoading('Scanning email...');
-            btnText.textContent = 'Scanning...';
-
-            const formData = new FormData();
+        async function doFetch() {
+            if (!currentToken) return;
+            var formData = new FormData();
             formData.append('token', currentToken);
-
             try {
-                const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
-                if (resp.status === 429) {
-                    const err = await resp.json().catch(() => ({}));
-                    hideLoading();
-                    startCooldown(err.retry_after || 30);
-                    isScanning = false;
-                    return;
-                }
-                if (!resp.ok) {
-                    const err = await resp.json().catch(() => ({}));
-                    hideLoading();
-                    alert(err.detail || 'Error scanning');
-                    btnText.textContent = 'Scan Email';
-                    isScanning = false;
-                    return;
-                }
-                const data = await resp.json();
+                var resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                if (!resp.ok) return;
+                var data = await resp.json();
                 if (data.emails && data.emails.length > 0) {
+                    var before = allEmails.length;
                     mergeEmails(data.emails);
-                    renderEmailList();
-                } else {
-                    btnText.textContent = 'No new email';
-                    setTimeout(() => {
-                        if (!isScanning && Date.now() >= cooldownEnd) {
-                            btnText.textContent = 'Scan Email';
-                        }
-                    }, 2000);
+                    if (allEmails.length > before) renderEmailList();
                 }
-            } catch (e) {
-                btnText.textContent = 'Scan Email';
-            }
-
-            hideLoading();
-            isScanning = false;
-            startCooldown(30);
-            startPolling(); // restart countdown setelah scan manual
+            } catch (e) {}
         }
-
-        // ─── Countdown 30s — reset saat user klik scan ────────────
-        function startPolling() {
-            stopPolling();
-            var countdown = 31;
-            var pi = document.getElementById('pollIndicator');
-            var dot = document.getElementById('pollDot');
-            var txt = document.getElementById('pollText');
-            if (pi) pi.style.display = 'flex';
-            if (dot) { dot.style.background = 'var(--primary)'; dot.style.animation = ''; }
-            tickCountdown();
-            pollTimer = setInterval(function() {
-                if (document.hidden) return;
-                if (isScanning || !currentToken) return;
-                countdown--;
-                tickCountdown();
-            }, 1000);
-
-            function tickCountdown() {
-                if (txt) txt.textContent = 'auto ' + countdown + 's';
-                if (dot) {
-                    if (countdown <= 5) {
-                        dot.style.background = '#f85149';
-                        dot.style.animation = 'pulse 1s ease-in-out infinite';
-                    } else {
-                        dot.style.background = 'var(--primary)';
-                        dot.style.animation = '';
-                    }
-                }
-                if (countdown <= 0) countdown = 31; // loop terus
-            }
-        }
-        function stopPolling() {
-            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-            var pi = document.getElementById('pollIndicator');
-            if (pi) pi.style.display = 'none';
-        }
-        document.addEventListener('visibilitychange', function() {
-            // countdown jalan terus walau tab hidden — user liat pas balik
-        });
-
-        // Pause scanning when tab is hidden
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden && cooldownTimer) {
-                clearTimeout(cooldownTimer);
-                cooldownTimer = null;
-            } else if (!document.hidden && cooldownEnd > Date.now()) {
-                const remaining = Math.ceil((cooldownEnd - Date.now()) / 1000);
-                if (remaining > 0) {
-                    startCooldown(remaining);
-                }
-            }
-        });
 
         async function submitToken() {
             const token = document.getElementById('tokenInput').value.trim();
@@ -431,7 +378,6 @@
                     mergeEmails(data.emails);
                     renderEmailList();
                     hideLoading();
-                    startPolling();
                     return;
                 } catch (e) {
                     lastError = e;
@@ -565,7 +511,7 @@
             allEmails = [];
             currentToken = '';
             document.getElementById('tokenInput').value = '';
-            stopPolling();
+            stopMonitoring();
             document.getElementById('emailAddress').textContent = '';
             document.getElementById('emailList').innerHTML = `
                 <div class="empty-state" id="emptyState">
