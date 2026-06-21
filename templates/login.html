@@ -4,7 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ site_name }} - Admin Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <script>
+    (function(){
+      var bgList = [
+        "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
+        "/bg/halloween-scene-illustration-anime-style.jpg",
+        "/bg/anime-style-mythical-dragon-creature.jpg",
+        "/bg/mythical-dragon-beast-anime-style.jpg",
+        "/bg/illustration-anime-character-rain.jpg"
+      ];
+      var idx = localStorage.getItem("xincro_bg_idx");
+      idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
+      localStorage.setItem("xincro_bg_idx", idx);
+      document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+      setInterval(function(){
+        idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+        localStorage.setItem("xincro_bg_idx", idx);
+        document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+      }, 120 * 60 * 1000);
+    })();
+    </script>
 </head>
 <body class="dark">
     <header class="topbar">

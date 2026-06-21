@@ -4,29 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="pageTitle">Stock Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+    (function(){
+      var bgList = [
+        "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
+        "/bg/halloween-scene-illustration-anime-style.jpg",
+        "/bg/anime-style-mythical-dragon-creature.jpg",
+        "/bg/mythical-dragon-beast-anime-style.jpg",
+        "/bg/illustration-anime-character-rain.jpg"
+      ];
+      var idx = localStorage.getItem("xincro_bg_idx");
+      idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
+      localStorage.setItem("xincro_bg_idx", idx);
+      document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+      setInterval(function(){
+        idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+        localStorage.setItem("xincro_bg_idx", idx);
+        document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+      }, 120 * 60 * 1000);
+    })();
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --bg: #0d1117;
-            --bg2: #161b22;
-            --surface: #1c2333;
-            --surface2: #222d3d;
-            --border: #30363d;
-            --text: #e6edf3;
-            --text2: #8b949e;
-            --primary: #6c5ce7;
-            --primary2: #5a4bd1;
+            --bg: #0D0E10;
+            --bg2: #121614;
+            --surface: rgba(18, 22, 20, 0.65);
+            --surface2: rgba(18, 22, 20, 0.8);
+            --border: rgba(207, 238, 230, 0.08);
+            --text: #CFEEE6;
+            --text2: rgba(207, 238, 230, 0.5);
+            --primary: #28C39D;
+            --primary2: #1a9a7a;
             --green: #2ecc71;
             --green2: #27ae60;
             --red: #f85149;
             --yellow: #d29922;
             --radius: 12px;
+            --glass-bg: rgba(18, 22, 20, 0.65);
+            --glass-border: rgba(207, 238, 230, 0.08);
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)),var(--bg-img, none) center/cover fixed; color: var(--text); display: flex; min-height: 100vh; background-attachment: fixed; transition: background-image 1.2s ease; }
         a { text-decoration: none; color: inherit; }
 
         /* ─── Sidebar ────────────────────────── */
-        .sb { width: 200px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
+        .sb { width: 200px; background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; }
         .sb-brand { padding: 24px 20px 20px; display: flex; align-items: center; gap: 12px; }
         .sb-logo { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--green)); display: flex; align-items: center; justify-content: center; }
         .sb-logo svg { color: #fff; }
@@ -77,7 +102,7 @@
 
         /* ─── Cards ──────────────────────────── */
         .cards-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+        .card { background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
         .card-highlight { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
         .card-label { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
         .card-value { font-size: 36px; font-weight: 800; color: var(--text); }
@@ -98,7 +123,7 @@
         .search-input { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; min-width: 200px; }
         .search-input svg { color: var(--text2); flex-shrink: 0; }
         .search-input input { background: transparent; border: none; color: var(--text); font-size: 13px; outline: none; width: 100%; }
-        .tbl-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .tbl-wrap { background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
         .tbl { width: 100%; border-collapse: collapse; }
         .tbl th { padding: 14px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid var(--border); background: var(--bg2); }
         .tbl td { padding: 14px 16px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border); }
@@ -114,7 +139,7 @@
         .cred-cell small { color: var(--text2); font-size: 12px; }
 
         /* ─── Search Card ────────────────────── */
-        .search-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+        .search-card { background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
         .search-card .card-label { margin-bottom: 12px; }
         .search-card-row { display: flex; gap: 12px; align-items: center; }
         .search-card-input { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
@@ -133,7 +158,7 @@
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 200; animation: fadeIn 0.15s; }
         .modal-overlay.hidden { display: none; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 18px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto; }
+        .modal { background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 18px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto; }
         .modal-sm { max-width: 380px; }
         .modal-lg { max-width: 640px; }
         .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; }
@@ -176,25 +201,25 @@
         /* ─── Detail Grid ────────────────────── */
         .detail-card { padding: 24px; text-align: center; }
         .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin-top: 16px; }
-        .detail-field { padding: 12px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+        .detail-field { padding: 12px; background: var(--glass-bg); backdrop-filter: blur(8px); border-radius: 10px; border: 1px solid var(--border); }
         .detail-label { display: block; font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
         .detail-value { font-size: 14px; font-weight: 600; color: var(--text); word-break: break-all; }
 
         /* ─── Settings ───────────────────────── */
         .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+        .settings-card { background: var(--glass-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
 
         /* ─── Alert Panel ────────────────────── */
-        .alert-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
+        .alert-panel { background: var(--glass-bg); backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; }
         .alert-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
         .alert-item:last-child { border-bottom: none; }
 
         /* ─── Bulk Bar ───────────────────────── */
-        .bulk-bar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); margin-top: 16px; }
+        .bulk-bar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--glass-bg); backdrop-filter: blur(14px); border: 1px solid var(--primary); border-radius: var(--radius); margin-top: 16px; }
         .bulk-bar input { flex: 1; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
 
         /* ─── Toast ──────────────────────────── */
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 999; transition: opacity 0.3s; }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(14px); color: var(--text); border: 1px solid var(--border); padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 999; transition: opacity 0.3s; }
         .toast.hidden { opacity: 0; pointer-events: none; }
 
         /* ─── Head Profile Selection Screen ─── */
