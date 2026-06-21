@@ -336,8 +336,10 @@
             if (!currentToken) return;
             var formData = new FormData();
             formData.append('token', currentToken);
+            formData.append('skip_cooldown', 'true');
             try {
                 var resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
+                if (resp.status === 429) return;
                 if (!resp.ok) return;
                 var data = await resp.json();
                 if (data.emails && data.emails.length > 0) {
