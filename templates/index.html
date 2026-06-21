@@ -380,6 +380,7 @@
                     mergeEmails(data.emails);
                     renderEmailList();
                     hideLoading();
+                    startMonitoring();
                     return;
                 } catch (e) {
                     lastError = e;
