@@ -344,6 +344,10 @@ async def init_db():
             INSERT OR IGNORE INTO settings (key, value)
             VALUES ('admin_password', 'admin123')
         """)
+        await db.execute("""
+            INSERT OR IGNORE INTO settings (key, value)
+            VALUES ('background_mode', 'auto')
+        """)
         # Default domains
         for d in ["beking.online", "evoprem.store"]:
             await db.execute(
@@ -361,6 +365,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+app.mount("/bg", StaticFiles(directory=os.path.join(BASE_DIR, "bg")), name="bg")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 
@@ -397,8 +402,9 @@ async def get_all_settings(db) -> dict:
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request, db=Depends(get_db)):
     site_name = await get_setting(db, "site_name")
+    bg_mode = await get_setting(db, "background_mode")
     return templates.TemplateResponse(
-        request, "index.html", {"site_name": site_name}
+        request, "index.html", {"site_name": site_name, "background_mode": bg_mode}
     )
 
 
@@ -480,8 +486,9 @@ async def scan_token(
 @app.get("/gatekeeper", response_class=HTMLResponse)
 async def admin_login_page(request: Request, db=Depends(get_db)):
     site_name = await get_setting(db, "site_name")
+    bg_mode = await get_setting(db, "background_mode")
     return templates.TemplateResponse(
-        request, "login.html", {"site_name": site_name}
+        request, "login.html", {"site_name": site_name, "background_mode": bg_mode}
     )
 
 
@@ -544,9 +551,10 @@ async def admin_panel(request: Request, db=Depends(get_db)):
             "SELECT id, email, domain, token, created_at FROM accounts ORDER BY id DESC"
         )
         accounts = [dict(r) for r in await rows.fetchall()]
+    bg_mode = settings.get("background_mode", "auto")
     return templates.TemplateResponse(
         request, "panel.html",
-        {"settings": settings, "domains": domains, "accounts": accounts, "total_accounts": total_accounts},
+        {"settings": settings, "domains": domains, "accounts": accounts, "total_accounts": total_accounts, "background_mode": bg_mode},
     )
 
 

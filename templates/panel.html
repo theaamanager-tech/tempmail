@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <script>
     (function(){
+      var mode = "{{ background_mode | default('auto') }}";
       var bgList = [
         "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
         "/bg/halloween-scene-illustration-anime-style.jpg",
@@ -17,15 +18,24 @@
         "/bg/mythical-dragon-beast-anime-style.jpg",
         "/bg/illustration-anime-character-rain.jpg"
       ];
-      var idx = localStorage.getItem("xincro_bg_idx");
-      idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
-      localStorage.setItem("xincro_bg_idx", idx);
-      document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
-      setInterval(function(){
-        idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+      function setBg(imgUrl) {
+        document.documentElement.style.setProperty("--bg-img", "url(" + imgUrl + ")");
+      }
+      if (mode === "off") {
+        document.documentElement.style.setProperty("--bg-img", "none");
+      } else {
+        var idx = localStorage.getItem("xincro_bg_idx");
+        idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
         localStorage.setItem("xincro_bg_idx", idx);
-        document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
-      }, 120 * 60 * 1000);
+        setBg(bgList[idx]);
+        if (mode === "auto") {
+          setInterval(function(){
+            idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+            localStorage.setItem("xincro_bg_idx", idx);
+            setBg(bgList[idx]);
+          }, 120 * 60 * 1000);
+        }
+      }
     })();
     </script>
 </head>
@@ -426,6 +436,20 @@ Response: {
                         <label>Admin Password</label>
                         <input type="password" id="settingAdminPass" value="{{ settings.admin_password }}">
                     </div>
+                    <div class="form-group">
+                        <label>Background</label>
+                        <div class="segmented-control">
+                            <input type="radio" name="bgMode" id="bgAuto" value="auto" onchange="onBgChange()">
+                            <label for="bgAuto" class="segment">Auto Rotate</label>
+                            <input type="radio" name="bgMode" id="bgStatic" value="static" onchange="onBgChange()">
+                            <label for="bgStatic" class="segment">Static</label>
+                            <input type="radio" name="bgMode" id="bgOff" value="off" onchange="onBgChange()">
+                            <label for="bgOff" class="segment">Off</label>
+                        </div>
+                        <p style="font-size:12px;color:var(--text2);margin-top:6px;">
+                            <span id="bgStatusLabel">Auto: ganti background setiap 2 jam</span>
+                        </p>
+                    </div>
                     <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
                     <div id="settingsMsg" class="toast hidden"></div>
                 </div>
@@ -794,10 +818,12 @@ Response: {
         }
 
         async function saveSettings() {
+            const bgMode = document.querySelector('input[name="bgMode"]:checked').value;
             const data = {
                 site_name: document.getElementById('settingSiteName').value,
                 admin_username: document.getElementById('settingAdminUser').value,
                 admin_password: document.getElementById('settingAdminPass').value,
+                background_mode: bgMode,
             };
             const resp = await fetch('/api/settings', {
                 method: 'POST',
@@ -809,7 +835,37 @@ Response: {
                 document.getElementById('sidebarTitle').textContent = data.site_name;
                 document.title = data.site_name + ' - Admin Panel';
                 showToast('Settings saved');
+                // Apply background change immediately
+                applyBgMode(bgMode);
             }
+        }
+
+        function applyBgMode(mode) {
+            var bgList = [
+                "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
+                "/bg/halloween-scene-illustration-anime-style.jpg",
+                "/bg/anime-style-mythical-dragon-creature.jpg",
+                "/bg/mythical-dragon-beast-anime-style.jpg",
+                "/bg/illustration-anime-character-rain.jpg"
+            ];
+            if (mode === "off") {
+                document.documentElement.style.setProperty("--bg-img", "none");
+            } else {
+                var idx = localStorage.getItem("xincro_bg_idx") || 0;
+                idx = Number(idx);
+                if (mode === "auto") {
+                    idx = (idx + 1) % bgList.length;
+                    localStorage.setItem("xincro_bg_idx", idx);
+                }
+                document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+            }
+            var labels = { auto: "Auto: ganti background setiap 2 jam", static: "Static: background tetap", off: "Off: tanpa background" };
+            document.getElementById('bgStatusLabel').textContent = labels[mode] || '';
+        }
+
+        function onBgChange() {
+            var mode = document.querySelector('input[name="bgMode"]:checked').value;
+            applyBgMode(mode);
         }
 
         function showToast(msg, isError = false) {
@@ -1319,6 +1375,16 @@ Response: {
         });
 
         // Stock Management is now a separate page at /stok
+
+        // ─── Background mode init ────────────────────────────────
+        (function(){
+            var mode = "{{ background_mode | default('auto') }}";
+            var radio = document.getElementById('bg' + mode.charAt(0).toUpperCase() + mode.slice(1));
+            if (radio) radio.checked = true;
+            var labels = { auto: "Auto: ganti background setiap 2 jam", static: "Static: background tetap", off: "Off: tanpa background" };
+            var statusEl = document.getElementById('bgStatusLabel');
+            if (statusEl) statusEl.textContent = labels[mode] || '';
+        })();
     </script>
 </body>
 </html>

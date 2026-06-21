@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script>
-    // ─── Background rotator (inspired by Novaciy°) ──────────────
+    // ─── Background rotator ─────────────────────────────────
     (function(){
+      var mode = "{{ background_mode | default('auto') }}";
       var bgList = [
         "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
         "/bg/halloween-scene-illustration-anime-style.jpg",
@@ -18,15 +19,25 @@
         "/bg/mythical-dragon-beast-anime-style.jpg",
         "/bg/illustration-anime-character-rain.jpg"
       ];
-      var idx = localStorage.getItem("xincro_bg_idx");
-      idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
-      localStorage.setItem("xincro_bg_idx", idx);
-      document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
-      setInterval(function(){
-        idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+      function setBg(imgUrl) {
+        document.documentElement.style.setProperty("--bg-img", "url(" + imgUrl + ")");
+      }
+      if (mode === "off") {
+        // No background image — just use the dark overlay color
+        document.documentElement.style.setProperty("--bg-img", "none");
+      } else {
+        var idx = localStorage.getItem("xincro_bg_idx");
+        idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
         localStorage.setItem("xincro_bg_idx", idx);
-        document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
-      }, 120 * 60 * 1000);
+        setBg(bgList[idx]);
+        if (mode === "auto") {
+          setInterval(function(){
+            idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
+            localStorage.setItem("xincro_bg_idx", idx);
+            setBg(bgList[idx]);
+          }, 120 * 60 * 1000);
+        }
+      }
     })();
     </script>
 </head>
