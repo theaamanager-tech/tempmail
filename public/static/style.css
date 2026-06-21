@@ -137,6 +137,7 @@ body.dark {
     font-size: 24px;
     margin-bottom: 8px;
     font-family: 'Playfair Display', serif;
+    color: #f5f9fa;
 }
 .token-desc {
     color: var(--text2);
@@ -536,6 +537,7 @@ body.dark {
     font-size: 22px;
     font-weight: 700;
     font-family: 'Playfair Display', serif;
+    color: #f5f9fa;
 }
 .login-card input {
     width: 100%;
@@ -875,7 +877,7 @@ body.dark {
     text-align: left;
     padding: 14px 16px;
     font-size: 11px;
-    color: var(--text2);
+    color: #f5f9fa;
     text-transform: uppercase;
     letter-spacing: 0.8px;
     font-weight: 700;
