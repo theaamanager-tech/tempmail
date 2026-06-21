@@ -107,9 +107,9 @@
                     <svg id="scanIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                     <span>Scan Email</span>
                 </button>
-                <span id="pollIndicator" style="display:none;font-size:11px;color:var(--text2);align-items:center;gap:4px;">
-                    <span style="width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse 2s ease-in-out infinite;"></span>
-                    auto
+                <span id="pollIndicator" style="display:none;font-size:11px;color:var(--text2);align-items:center;gap:5px;">
+                    <span id="pollDot" style="width:6px;height:6px;border-radius:50%;background:var(--primary);"></span>
+                    <span id="pollText">auto 30s</span>
                 </span>
             </div>
         </div>
@@ -347,32 +347,50 @@
             startCooldown(30);
         }
 
-        // ─── Auto-polling (setiap 30 detik, hanya tab aktif) ──────
+        // ─── Auto countdown 30s + scan otomatis ───────────────────
         function startPolling() {
             stopPolling();
-            if (document.hidden) return; // jangan polling kalau tab tidak aktif
             isPolling = true;
+            var countdown = 30;
             var pi = document.getElementById('pollIndicator');
+            var dot = document.getElementById('pollDot');
+            var txt = document.getElementById('pollText');
             if (pi) pi.style.display = 'flex';
-            pollTimer = setInterval(async () => {
-                if (document.hidden) { stopPolling(); return; }
-                if (isScanning || !currentToken || Date.now() < cooldownEnd) return;
-                const formData = new FormData();
-                formData.append('token', currentToken);
-                try {
-                    const resp = await fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000);
-                    if (resp.status === 429) return;
-                    if (!resp.ok) return;
-                    const data = await resp.json();
-                    if (data.emails && data.emails.length > 0) {
-                        const before = allEmails.length;
-                        mergeEmails(data.emails);
-                        if (allEmails.length > before) {
-                            renderEmailList();
-                        }
+            if (dot) { dot.style.background = 'var(--primary)'; dot.style.animation = ''; }
+            if (txt) txt.textContent = 'auto ' + countdown + 's';
+
+            pollTimer = setInterval(function() {
+                if (document.hidden) { stopPolling(); startPollingWhenVisible(); return; }
+                if (isScanning || !currentToken) return;
+
+                countdown--;
+                if (txt) txt.textContent = 'auto ' + countdown + 's';
+                if (dot) {
+                    if (countdown <= 5) {
+                        dot.style.background = '#f85149';
+                        dot.style.animation = 'pulse 1s ease-in-out infinite';
                     }
-                } catch (e) {}
-            }, 30000);
+                }
+
+                if (countdown <= 0) {
+                    countdown = 31; // reset untuk siklus berikutnya
+                    var formData = new FormData();
+                    formData.append('token', currentToken);
+                    fetchWithTimeout('/api/scan', { method: 'POST', body: formData }, 14000)
+                        .then(function(resp) {
+                            if (!resp.ok) return null;
+                            return resp.json();
+                        })
+                        .then(function(data) {
+                            if (data && data.emails && data.emails.length > 0) {
+                                var before = allEmails.length;
+                                mergeEmails(data.emails);
+                                if (allEmails.length > before) renderEmailList();
+                            }
+                        })
+                        .catch(function() {});
+                }
+            }, 1000);
         }
         function stopPolling() {
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -380,10 +398,19 @@
             var pi = document.getElementById('pollIndicator');
             if (pi) pi.style.display = 'none';
         }
-        // Stop polling when tab hidden, resume when visible
+        var pollVisibleTimer = null;
+        function startPollingWhenVisible() {
+            if (pollVisibleTimer) clearInterval(pollVisibleTimer);
+            pollVisibleTimer = setInterval(function() {
+                if (!document.hidden && currentToken) {
+                    clearInterval(pollVisibleTimer);
+                    pollVisibleTimer = null;
+                    startPolling();
+                }
+            }, 500);
+        }
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) { stopPolling(); }
-            else if (currentToken && !isPolling) { startPolling(); }
         });
 
         // Pause scanning when tab is hidden
