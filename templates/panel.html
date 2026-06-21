@@ -8,33 +8,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body.dark {
+            background: linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,.72)), url(/bg/halloween-scene-illustration-anime-style.jpg) center/cover fixed;
+        }
+    </style>
     <script>
     (function(){
       var mode = "{{ background_mode | default('auto') }}";
-      var bgList = [
-        "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
-        "/bg/halloween-scene-illustration-anime-style.jpg",
-        "/bg/anime-style-mythical-dragon-creature.jpg",
-        "/bg/mythical-dragon-beast-anime-style.jpg",
-        "/bg/illustration-anime-character-rain.jpg"
-      ];
-      function setBg(imgUrl) {
-        document.documentElement.style.setProperty("--bg-img", "url(" + imgUrl + ")");
-      }
       if (mode === "off") {
         document.documentElement.style.setProperty("--bg-img", "none");
-      } else {
-        var idx = localStorage.getItem("xincro_bg_idx");
-        idx = idx === null ? Math.floor(Math.random() * bgList.length) : (Number(idx) + 1) % bgList.length;
-        localStorage.setItem("xincro_bg_idx", idx);
-        setBg(bgList[idx]);
-        if (mode === "auto") {
-          setInterval(function(){
-            idx = (Number(localStorage.getItem("xincro_bg_idx")) + 1) % bgList.length;
-            localStorage.setItem("xincro_bg_idx", idx);
-            setBg(bgList[idx]);
-          }, 120 * 60 * 1000);
-        }
       }
     })();
     </script>
@@ -885,23 +868,11 @@ Response: {
         }
 
         function applyBgMode(mode) {
-            var bgList = [
-                "/bg/moon-sky-night-background-asset-game-2d-futuristic-generative-ai.jpg",
-                "/bg/halloween-scene-illustration-anime-style.jpg",
-                "/bg/anime-style-mythical-dragon-creature.jpg",
-                "/bg/mythical-dragon-beast-anime-style.jpg",
-                "/bg/illustration-anime-character-rain.jpg"
-            ];
+            var bg = "/bg/halloween-scene-illustration-anime-style.jpg";
             if (mode === "off") {
                 document.documentElement.style.setProperty("--bg-img", "none");
             } else {
-                var idx = localStorage.getItem("xincro_bg_idx") || 0;
-                idx = Number(idx);
-                if (mode === "auto") {
-                    idx = (idx + 1) % bgList.length;
-                    localStorage.setItem("xincro_bg_idx", idx);
-                }
-                document.documentElement.style.setProperty("--bg-img", "url(" + bgList[idx] + ")");
+                document.documentElement.style.setProperty("--bg-img", "url(" + bg + ")");
             }
             var labels = { auto: "Auto: ganti background setiap 2 jam", static: "Static: background tetap", off: "Off: tanpa background" };
             document.getElementById('bgStatusLabel').textContent = labels[mode] || '';
