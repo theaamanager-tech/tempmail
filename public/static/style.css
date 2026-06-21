@@ -408,8 +408,8 @@ body.dark {
 .email-item-content { flex: 1; min-width: 0; }
 .email-item-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
 .email-sender { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f5f9fa; }
-.email-date { font-size: 12px; color: var(--text2); white-space: nowrap; }
-.email-subject { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.email-date { font-size: 12px; color: #f5f9fa; white-space: nowrap; }
+.email-subject { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; color: #f5f9fa; }
 .email-preview { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .empty-state {
@@ -467,7 +467,7 @@ body.dark {
 }
 .detail-meta-text { display: flex; flex-direction: column; }
 .detail-sender { font-weight: 600; font-size: 14px; color: #f5f9fa; }
-.detail-date { font-size: 12px; color: var(--text2); }
+.detail-date { font-size: 12px; color: #f5f9fa; }
 .detail-body {
     padding: 24px 32px;
     font-size: 14px;
