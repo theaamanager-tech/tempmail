@@ -222,7 +222,7 @@
             <div class="tab-content" id="tab-outlook">
                 <div class="form-card">
                     <h3 style="margin:0 0 12px;color:var(--text-primary);">Bulk Import Outlook Accounts</h3>
-                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px;">
+                    <p style="color:#fff;font-size:13px;margin:0 0 16px;">
                         Paste akun Outlook lo di sini. Format: <code>email|password|extra</code> (satu per line).
                         Password opsional. Email akan otomatis dapet token dan bisa langsung dipake.
                     </p>
@@ -239,19 +239,22 @@
                 </div>
 
                 <div style="margin-top:24px;">
+                    <div class="search-bar" style="margin-bottom:8px;">
+                        <input type="text" id="searchOutlook" placeholder="Search outlook accounts..." oninput="filterOutlookAccounts()">
+                    </div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                         <h3 style="margin:0;color:var(--text-primary);">Outlook Account Pool</h3>
-                        <span id="outlookPoolCount" style="font-size:13px;color:var(--text-muted);"></span>
+                        <span id="outlookPoolCount" style="font-size:13px;color:#fff;"></span>
                     </div>
                     <div class="accounts-table">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Email</th>
-                                    <th>Password</th>
-                                    <th>Token</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
+                                    <th style="color:#fff;">Email</th>
+                                    <th style="color:#fff;">Password</th>
+                                    <th style="color:#fff;">Token</th>
+                                    <th style="color:#fff;">Created</th>
+                                    <th style="color:#fff;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="outlookAccountsBody"></tbody>
@@ -1082,27 +1085,46 @@ Response: {
             try {
                 const resp = await fetch('/api/outlook/accounts', { credentials: 'include' });
                 const accounts = await resp.json();
-                const body = document.getElementById('outlookAccountsBody');
-                const countEl = document.getElementById('outlookPoolCount');
-                body.innerHTML = '';
-                if (countEl) countEl.textContent = `${accounts.length} account(s)`;
-                accounts.forEach(acc => {
-                    const tr = document.createElement('tr');
-                    const pwPreview = acc.password ? acc.password.substring(0, 4) + '...' : '-';
-                    tr.innerHTML = `
-                        <td>${escapeHtml(acc.email)}</td>
-                        <td><code style="font-size:11px;color:var(--text-muted);">${pwPreview}</code></td>
-                        <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${(acc.token || '').substring(0, 12)}...</code></td>
-                        <td>${acc.created_at || acc.createdAt || ''}</td>
-                        <td class="actions-cell">
-                            <button class="btn-sm btn-copy" onclick="navigator.clipboard.writeText('${escapeAttr(acc.email)} | ${acc.token}').then(()=>showToast('Copied!'))">Copy</button>
-                            <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')">Scan</button>
-                            <button class="btn-sm btn-danger" onclick="deleteOutlookAccount(${acc.id}, this)">Del</button>
-                        </td>
-                    `;
-                    body.appendChild(tr);
-                });
+                _outlookAccounts = accounts;
+                renderOutlookAccounts();
             } catch (e) {}
+        }
+
+        let _outlookAccounts = [];
+
+        function renderOutlookAccounts() {
+            const body = document.getElementById('outlookAccountsBody');
+            const countEl = document.getElementById('outlookPoolCount');
+            const q = (document.getElementById('searchOutlook')?.value || '').toLowerCase().trim();
+            var filtered = _outlookAccounts;
+            if (q) {
+                filtered = _outlookAccounts.filter(function(a) {
+                    return (a.email && a.email.toLowerCase().includes(q)) ||
+                           (a.token && a.token.toLowerCase().includes(q));
+                });
+            }
+            body.innerHTML = '';
+            if (countEl) countEl.textContent = `${filtered.length} / ${_outlookAccounts.length} account(s)`;
+            filtered.forEach(acc => {
+                const tr = document.createElement('tr');
+                const pwPreview = acc.password ? acc.password.substring(0, 4) + '...' : '-';
+                tr.innerHTML = `
+                    <td>${escapeHtml(acc.email)}</td>
+                    <td><code style="font-size:11px;color:var(--text-muted);">${pwPreview}</code></td>
+                    <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${(acc.token || '').substring(0, 12)}...</code></td>
+                    <td>${acc.created_at || acc.createdAt || ''}</td>
+                    <td class="actions-cell">
+                        <button class="btn-sm btn-copy" onclick="navigator.clipboard.writeText('${escapeAttr(acc.email)} | ${acc.token}').then(()=>showToast('Copied!'))">Copy</button>
+                        <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')">Scan</button>
+                        <button class="btn-sm btn-danger" onclick="deleteOutlookAccount(${acc.id}, this)">Del</button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+        }
+
+        function filterOutlookAccounts() {
+            renderOutlookAccounts();
         }
 
         async function deleteOutlookAccount(id, btn) {
