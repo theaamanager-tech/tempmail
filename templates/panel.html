@@ -221,20 +221,20 @@
             <!-- Outlook Pool Tab -->
             <div class="tab-content" id="tab-outlook">
                 <div class="form-card">
-                    <h3 style="margin:0 0 12px;color:var(--text-primary);">Bulk Import Outlook Accounts</h3>
+                    <h3 style="margin:0 0 12px;color:#fff;">Bulk Import Outlook Accounts</h3>
                     <p style="color:#fff;font-size:13px;margin:0 0 16px;">
                         Paste akun Outlook lo di sini. Format: <code>email|password|extra</code> (satu per line).
                         Password opsional. Email akan otomatis dapet token dan bisa langsung dipake.
                     </p>
                     <div class="form-group">
-                        <label>Akun Outlook (email|password per line)</label>
+                        <label style="color:#fff;">Akun Outlook (email|password per line)</label>
                         <textarea id="outlookBulkData" rows="10" style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:monospace;resize:vertical;" placeholder="mustofafawwaz@outlook.com|password123&#10;subiantoemon@outlook.com|pass456&#10;lutvikhoyi@outlook.com|pass789"></textarea>
                     </div>
                     <button class="btn-primary" onclick="importOutlookAccounts()">Import Accounts</button>
                 </div>
 
                 <div id="outlookImportResult" class="results-section hidden" style="margin-top:16px;">
-                    <h2>Import Result</h2>
+                    <h2 style="color:#fff;">Import Result</h2>
                     <div id="outlookImportContent" class="results-list"></div>
                 </div>
 
@@ -243,7 +243,7 @@
                         <input type="text" id="searchOutlook" placeholder="Search outlook accounts..." oninput="filterOutlookAccounts()">
                     </div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                        <h3 style="margin:0;color:var(--text-primary);">Outlook Account Pool</h3>
+                    <h3 style="margin:0;color:#fff;">Outlook Account Pool</h3>
                         <span id="outlookPoolCount" style="font-size:13px;color:#fff;"></span>
                     </div>
                     <div class="accounts-table">
