@@ -47,6 +47,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
                     Email Accounts
                 </a>
+                <a href="#" class="nav-item" data-tab="outlook" onclick="switchTab('outlook')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M22 5l-9 6-9-6"/></svg>
+                    Outlook Pool
+                </a>
             </nav>
             <div class="sidebar-section-label">SYSTEM</div>
             <nav class="sidebar-nav">
@@ -210,6 +214,48 @@
                             <span id="accountsPageInfo" style="font-size:12px;color:var(--text2);font-weight:600;min-width:60px;text-align:center;"></span>
                             <button id="accountsNextBtn" class="btn-pagination" onclick="changeAccountsPage(1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">Next ›</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Outlook Pool Tab -->
+            <div class="tab-content" id="tab-outlook">
+                <div class="form-card">
+                    <h3 style="margin:0 0 12px;color:var(--text-primary);">Bulk Import Outlook Accounts</h3>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px;">
+                        Paste akun Outlook lo di sini. Format: <code>email|password|extra</code> (satu per line).
+                        Password opsional. Email akan otomatis dapet token dan bisa langsung dipake.
+                    </p>
+                    <div class="form-group">
+                        <label>Akun Outlook (email|password per line)</label>
+                        <textarea id="outlookBulkData" rows="10" style="width:100%;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:monospace;resize:vertical;" placeholder="mustofafawwaz@outlook.com|password123&#10;subiantoemon@outlook.com|pass456&#10;lutvikhoyi@outlook.com|pass789"></textarea>
+                    </div>
+                    <button class="btn-primary" onclick="importOutlookAccounts()">Import Accounts</button>
+                </div>
+
+                <div id="outlookImportResult" class="results-section hidden" style="margin-top:16px;">
+                    <h2>Import Result</h2>
+                    <div id="outlookImportContent" class="results-list"></div>
+                </div>
+
+                <div style="margin-top:24px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <h3 style="margin:0;color:var(--text-primary);">Outlook Account Pool</h3>
+                        <span id="outlookPoolCount" style="font-size:13px;color:var(--text-muted);"></span>
+                    </div>
+                    <div class="accounts-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Password</th>
+                                    <th>Token</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outlookAccountsBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -463,6 +509,7 @@ Response: {
             generate: 'Generate Email',
             manual: 'Manual Create',
             accounts: 'Email Accounts',
+            outlook: 'Outlook Pool',
             domains: 'Domains',
             apikeys: 'API Keys',
             settings: 'Settings',
@@ -727,47 +774,68 @@ Response: {
 
         function renderAccountsPage() {
             const body = document.getElementById('accountsBody');
-            const total = allAccounts.length;
+            var q = document.getElementById('searchAccounts').value.toLowerCase().trim();
+            var filtered = allAccounts;
+            if (q) {
+                filtered = allAccounts.filter(function(a) {
+                    return (a.email && a.email.toLowerCase().includes(q)) ||
+                           (a.token && a.token.toLowerCase().includes(q));
+                });
+            }
+            const total = filtered.length;
             const totalPages = Math.max(1, Math.ceil(total / ACCOUNTS_PER_PAGE));
             if (accountsPage > totalPages) accountsPage = totalPages;
             const start = (accountsPage - 1) * ACCOUNTS_PER_PAGE;
             const end = Math.min(start + ACCOUNTS_PER_PAGE, total);
-            const pageItems = allAccounts.slice(start, end);
+            const pageItems = filtered.slice(start, end);
+            var infoText = '';
+            if (q) {
+                infoText = total > 0
+                    ? 'Showing ' + (start+1) + '-' + end + ' of ' + total + ' matching accounts (filtered from ' + allAccounts.length + ')'
+                    : 'No matching accounts';
+            } else {
+                infoText = total > 0
+                    ? 'Showing ' + (start+1) + '-' + end + ' of ' + total + ' accounts'
+                    : 'No accounts';
+            }
+            document.getElementById('accountsInfo').textContent = infoText;
+
+            // Back/Next
+            document.getElementById('accountsPrevBtn').style.display = accountsPage > 1 ? 'inline-flex' : 'none';
+            document.getElementById('accountsNextBtn').style.display = accountsPage < totalPages ? 'inline-flex' : 'none';
+            if (totalPages > 1) {
+                document.getElementById('accountsPageInfo').textContent = 'Page ' + accountsPage + ' of ' + totalPages;
+            } else {
+                document.getElementById('accountsPageInfo').textContent = '';
+            }
 
             body.innerHTML = '';
-            pageItems.forEach(acc => {
+            pageItems.forEach(function(acc) {
                 const tr = document.createElement('tr');
                 tr.dataset.id = acc.id;
                 tr.dataset.email = acc.email;
                 tr.dataset.token = acc.token;
                 tr.innerHTML = `
-                    <td>${acc.email}</td>
-                    <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${acc.token.substring(0, 12)}...</code></td>
-                    <td>${acc.created_at}</td>
+                    <td>${escapeHtml(acc.email)}</td>
+                    <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${(acc.token || '').substring(0, 12)}...</code></td>
+                    <td>${acc.created_at || ''}</td>
                     <td class="actions-cell">
-                        <button class="btn-sm btn-copy" onclick="copyEmailToken('${acc.email}', '${acc.token}')" title="Copy email | token">Copy</button>
+                        <button class="btn-sm btn-copy" onclick="copyEmailToken('${escapeAttr(acc.email)}', '${acc.token}')" title="Copy email | token">Copy</button>
                         <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')" title="Scan for emails">Scan</button>
                         <button class="btn-sm btn-danger" onclick="deleteAccount('${acc.id}', this)" title="Delete">Del</button>
                     </td>
                 `;
                 body.appendChild(tr);
             });
-
-            // Update pagination UI
-            document.getElementById('accountsInfo').textContent = total > 0
-                ? `Showing ${start+1}-${end} of ${total} accounts`
-                : 'No accounts';
-            document.getElementById('accountsPageInfo').textContent = totalPages > 1
-                ? `Page ${accountsPage} of ${totalPages}`
-                : '';
-            document.getElementById('accountsPrevBtn').style.display = accountsPage > 1 ? 'inline-flex' : 'none';
-            document.getElementById('accountsNextBtn').style.display = accountsPage < totalPages ? 'inline-flex' : 'none';
-            // Re-apply search filter
-            filterAccounts();
         }
 
         function changeAccountsPage(delta) {
-            const totalPages = Math.max(1, Math.ceil(allAccounts.length / ACCOUNTS_PER_PAGE));
+            var q = document.getElementById('searchAccounts').value.toLowerCase().trim();
+            var total = q ? allAccounts.filter(function(a) {
+                return (a.email && a.email.toLowerCase().includes(q)) ||
+                       (a.token && a.token.toLowerCase().includes(q));
+            }).length : allAccounts.length;
+            const totalPages = Math.max(1, Math.ceil(total / ACCOUNTS_PER_PAGE));
             const newPage = accountsPage + delta;
             if (newPage < 1 || newPage > totalPages) return;
             accountsPage = newPage;
@@ -775,24 +843,8 @@ Response: {
         }
 
         function filterAccounts() {
-            const q = document.getElementById('searchAccounts').value.toLowerCase();
-            document.querySelectorAll('#accountsBody tr').forEach(tr => {
-                const email = tr.dataset.email || '';
-                const token = tr.dataset.token || '';
-                tr.style.display = (email.includes(q) || token.includes(q)) ? '' : 'none';
-            });
-            // Update info text to reflect filtered results
-            const visible = [...document.querySelectorAll('#accountsBody tr')].filter(t => t.style.display !== 'none').length;
-            const total = allAccounts.length;
-            const start = (accountsPage - 1) * ACCOUNTS_PER_PAGE + 1;
-            if (q) {
-                document.getElementById('accountsInfo').textContent = `${visible} matching accounts`;
-            } else {
-                const end = Math.min(accountsPage * ACCOUNTS_PER_PAGE, total);
-                document.getElementById('accountsInfo').textContent = total > 0
-                    ? `Showing ${start}-${end} of ${total} accounts`
-                    : 'No accounts';
-            }
+            accountsPage = 1;
+            renderAccountsPage();
         }
 
         async function addDomain() {
@@ -969,6 +1021,98 @@ Response: {
         refreshApiKeys();
         // Load accounts with pagination
         refreshAccounts();
+        // Load outlook pool
+        refreshOutlookAccounts();
+
+        // ─── Outlook Pool Functions ────────────────────────────────
+        async function importOutlookAccounts() {
+            const text = document.getElementById('outlookBulkData').value.trim();
+            if (!text) { showToast('Paste akun Outlook dulu', true); return; }
+
+            try {
+                const resp = await fetch('/api/outlook/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: text,
+                    credentials: 'include',
+                });
+                if (resp.status === 401) { window.location.href = '/gatekeeper'; return; }
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => null);
+                    showToast(err?.detail || 'Import failed', true);
+                    return;
+                }
+                const data = await resp.json();
+
+                // Show result
+                const container = document.getElementById('outlookImportContent');
+                let html = '';
+                if (data.imported && data.imported.length > 0) {
+                    html += `<div style="color:var(--success);font-weight:600;margin-bottom:8px;">✅ ${data.imported.length} account(s) imported</div>`;
+                    data.imported.forEach(acc => {
+                        html += `<div class="result-item">
+                            <div class="result-info">
+                                <span class="result-email">${acc.email}</span>
+                                <code class="result-token">${acc.token}</code>
+                            </div>
+                            <div class="result-actions">
+                                <button class="btn-sm btn-copy" onclick="navigator.clipboard.writeText('${acc.email} | ${acc.token}').then(()=>showToast('Copied!'))">Copy</button>
+                                <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')">Scan</button>
+                            </div>
+                        </div>`;
+                    });
+                }
+                if (data.errors && data.errors.length > 0) {
+                    html += `<div style="color:#f85149;font-weight:600;margin-top:8px;">⚠️ ${data.errors.length} error(s)</div>`;
+                    html += `<div style="font-size:12px;color:var(--text-muted);max-height:120px;overflow-y:auto;margin-top:4px;">`;
+                    data.errors.forEach(e => { html += `<div>${escapeHtml(e)}</div>`; });
+                    html += `</div>`;
+                }
+                container.innerHTML = html;
+                document.getElementById('outlookImportResult').classList.remove('hidden');
+                document.getElementById('outlookBulkData').value = '';
+                showToast(`${data.imported.length} account(s) imported`);
+                refreshOutlookAccounts();
+            } catch (e) {
+                showToast('Connection error', true);
+            }
+        }
+
+        async function refreshOutlookAccounts() {
+            try {
+                const resp = await fetch('/api/outlook/accounts', { credentials: 'include' });
+                const accounts = await resp.json();
+                const body = document.getElementById('outlookAccountsBody');
+                const countEl = document.getElementById('outlookPoolCount');
+                body.innerHTML = '';
+                if (countEl) countEl.textContent = `${accounts.length} account(s)`;
+                accounts.forEach(acc => {
+                    const tr = document.createElement('tr');
+                    const pwPreview = acc.password ? acc.password.substring(0, 4) + '...' : '-';
+                    tr.innerHTML = `
+                        <td>${escapeHtml(acc.email)}</td>
+                        <td><code style="font-size:11px;color:var(--text-muted);">${pwPreview}</code></td>
+                        <td class="token-cell"><code onclick="copyToken('${acc.token}')" title="Click to copy token" style="cursor:pointer;">${(acc.token || '').substring(0, 12)}...</code></td>
+                        <td>${acc.created_at || acc.createdAt || ''}</td>
+                        <td class="actions-cell">
+                            <button class="btn-sm btn-copy" onclick="navigator.clipboard.writeText('${escapeAttr(acc.email)} | ${acc.token}').then(()=>showToast('Copied!'))">Copy</button>
+                            <button class="btn-sm btn-scan-link" onclick="openScan('${acc.token}')">Scan</button>
+                            <button class="btn-sm btn-danger" onclick="deleteOutlookAccount(${acc.id}, this)">Del</button>
+                        </td>
+                    `;
+                    body.appendChild(tr);
+                });
+            } catch (e) {}
+        }
+
+        async function deleteOutlookAccount(id, btn) {
+            if (!confirm('Delete this Outlook account?')) return;
+            const resp = await fetch(`/api/outlook/accounts/${id}`, { method: 'DELETE', credentials: 'include' });
+            if (resp.ok) {
+                btn.closest('tr').remove();
+                showToast('Account deleted');
+            }
+        }
 
         // ─── Password Generator ───────────────────────────────────
         function generatePasswords() {

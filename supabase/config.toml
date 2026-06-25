@@ -1,0 +1,12 @@
+# Supabase configuration for tempmail project
+# Connected to: https://supabase.com/dashboard/project/[YOUR_PROJECT_ID]
+
+# Schema used: public
+# Tables: tokens, app_config, app_domains, emails, api_keys, stok_data
+# Migrations: supabase/migrations/
+
+[api]
+port = 8000
+
+[db]
+# Connection is managed via SUPABASE_URL and SUPABASE_KEY env vars

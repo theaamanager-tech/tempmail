@@ -331,6 +331,13 @@ async def init_db():
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        # Migration: add password & source columns if not exist
+        for col in ["password TEXT DEFAULT ''", "source TEXT DEFAULT ''", "extra_data TEXT DEFAULT '{}'"]:
+            try:
+                await db.execute(f"ALTER TABLE accounts ADD COLUMN {col}")
+            except Exception:
+                pass  # column already exists
+
         # Default settings
         await db.execute("""
             INSERT OR IGNORE INTO settings (key, value)
@@ -756,12 +763,14 @@ async def list_accounts(request: Request, db=Depends(get_db)):
             "select": "id,email,token_id,created_at",
             "order": "id.desc",
         })
+        # Filter: sembunyikan akun @outlook.com dari Email Accounts
+        rows = [r for r in rows if not r["email"].lower().endswith("@outlook.com")]
         return [
             {"id": r["id"], "email": r["email"], "domain": r["email"].split("@")[1] if "@" in r["email"] else "", "token": r["token_id"], "created_at": _format_date(r["created_at"])}
             for r in rows
         ]
     rows = await db.execute(
-        "SELECT id, email, domain, token, created_at FROM accounts ORDER BY id DESC"
+        "SELECT id, email, domain, token, created_at FROM accounts WHERE (source IS NULL OR source != 'outlook') ORDER BY id DESC"
     )
     return [dict(r) for r in await rows.fetchall()]
 
@@ -770,11 +779,107 @@ async def list_accounts(request: Request, db=Depends(get_db)):
 async def count_accounts(request: Request, db=Depends(get_db)):
     require_admin(request)
     if USE_SUPABASE:
-        total = await db.count("tokens")
-        return {"count": total}
-    row = await db.execute("SELECT COUNT(*) as cnt FROM accounts")
+        rows = await db.select("tokens", {"select": "email"})
+        count = len([r for r in rows if not r["email"].lower().endswith("@outlook.com")])
+        return {"count": count}
+    row = await db.execute("SELECT COUNT(*) as cnt FROM accounts WHERE (source IS NULL OR source != 'outlook')")
     result = await row.fetchone()
     return {"count": result["cnt"] if result else 0}
+
+
+# ─── Outlook Account Pool ─────────────────────────────────────────
+
+@app.post("/api/outlook/import")
+async def outlook_bulk_import(request: Request, db=Depends(get_db)):
+    require_admin(request)
+    body = await request.body()
+    text = body.decode("utf-8")
+    lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
+
+    imported = []
+    errors = []
+    for line in lines:
+        parts = line.split("|")
+        email = parts[0].strip().lower()
+        password = parts[1].strip() if len(parts) >= 2 else ""
+        extra = parts[2].strip() if len(parts) >= 3 else ""
+
+        if "@" not in email:
+            errors.append(f"Invalid: {email}")
+            continue
+
+        domain = email.split("@")[1]
+        token = secrets.token_hex(8).upper()
+
+        if USE_SUPABASE:
+            try:
+                result = await db.insert("tokens", {
+                    "email": email,
+                    "token_id": token,
+                    "password": password,
+                    "source": "outlook",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                if result is None:
+                    errors.append(f"Duplicate: {email}")
+                    continue
+                imported.append({"email": email, "token": token, "password": password})
+            except Exception as e:
+                errors.append(f"{email}: {str(e)}")
+                continue
+        else:
+            row = await db.execute("SELECT id FROM accounts WHERE email = ?", (email,))
+            if await row.fetchone():
+                errors.append(f"Duplicate: {email}")
+                continue
+
+            try:
+                await db.execute(
+                    "INSERT INTO accounts (email, domain, token, password, source, extra_data) VALUES (?, ?, ?, ?, ?, ?)",
+                    (email, domain, token, password, "outlook", json.dumps({"extra": extra})),
+                )
+                imported.append({"email": email, "token": token, "password": password})
+            except Exception as e:
+                errors.append(f"{email}: {str(e)}")
+                continue
+
+    if not USE_SUPABASE:
+        await db.commit()
+
+    return {"imported": imported, "errors": errors, "total": len(imported)}
+
+
+@app.get("/api/outlook/accounts")
+async def outlook_list_accounts(request: Request, db=Depends(get_db)):
+    require_admin(request)
+    if USE_SUPABASE:
+        rows = await db.select("tokens", {
+            "select": "id,email,token_id,created_at,password",
+            "order": "id.desc",
+        })
+        # Filter: hanya akun @outlook.com
+        rows = [r for r in rows if r["email"].lower().endswith("@outlook.com")]
+        return [
+            {"id": r["id"], "email": r["email"], "domain": "outlook.com",
+             "token": r["token_id"], "password": r.get("password", ""),
+             "created_at": _format_date(r["created_at"])}
+            for r in rows
+        ]
+    rows = await db.execute(
+        "SELECT id, email, domain, token, password, source, created_at FROM accounts WHERE source = 'outlook' ORDER BY id DESC"
+    )
+    return [dict(r) for r in await rows.fetchall()]
+
+
+@app.delete("/api/outlook/accounts/{account_id}")
+async def outlook_delete_account(account_id: int, request: Request, db=Depends(get_db)):
+    require_admin(request)
+    if USE_SUPABASE:
+        await db.delete("tokens", {"id": f"eq.{account_id}"})
+        return {"ok": True}
+    await db.execute("DELETE FROM accounts WHERE id = ? AND source = 'outlook'", (account_id,))
+    await db.commit()
+    return {"ok": True}
 
 
 @app.post("/api/settings")
