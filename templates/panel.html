@@ -262,11 +262,7 @@
                     </table>
                     <div id="accountsPagination" class="pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);gap:8px;flex-wrap:wrap;">
                         <span id="accountsInfo" style="font-size:12px;color:var(--text2);"></span>
-                        <div style="display:flex;gap:6px;align-items:center;">
-                            <button id="accountsPrevBtn" class="btn-pagination" onclick="changeAccountsPage(-1)" style="display:none;padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">‹ Prev</button>
-                            <span id="accountsPageInfo" style="font-size:12px;color:var(--text2);font-weight:600;min-width:60px;text-align:center;"></span>
-                            <button id="accountsNextBtn" class="btn-pagination" onclick="changeAccountsPage(1)" style="padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">Next ›</button>
-                        </div>
+                        <div id="accountsPageBtns" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;"></div>
                     </div>
                 </div>
             </div>
@@ -930,10 +926,12 @@ Response: {
             const start = (accountsPage - 1) * ACCOUNTS_PER_PAGE;
             const end = Math.min(start + ACCOUNTS_PER_PAGE, total);
             const pageItems = filtered.slice(start, end);
+
+            // Info text
             var infoText = '';
             if (q) {
                 infoText = total > 0
-                    ? 'Showing ' + (start+1) + '-' + end + ' of ' + total + ' matching accounts (filtered from ' + allAccounts.length + ')'
+                    ? 'Showing ' + (start+1) + '-' + end + ' of ' + total + ' results (from ' + allAccounts.length + ' total)'
                     : 'No matching accounts';
             } else {
                 infoText = total > 0
@@ -942,15 +940,72 @@ Response: {
             }
             document.getElementById('accountsInfo').textContent = infoText;
 
-            // Back/Next
-            document.getElementById('accountsPrevBtn').style.display = accountsPage > 1 ? 'inline-flex' : 'none';
-            document.getElementById('accountsNextBtn').style.display = accountsPage < totalPages ? 'inline-flex' : 'none';
+            // ── Pagination buttons (numbered, with ellipsis for 99+) ──
+            var btnContainer = document.getElementById('accountsPageBtns');
+            btnContainer.innerHTML = '';
+
             if (totalPages > 1) {
-                document.getElementById('accountsPageInfo').textContent = 'Page ' + accountsPage + ' of ' + totalPages;
-            } else {
-                document.getElementById('accountsPageInfo').textContent = '';
+                var btnStyle = 'padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;min-width:34px;';
+                var activeBtnStyle = 'padding:5px 10px;border:1px solid var(--primary);border-radius:6px;background:var(--primary);color:#fff;font-size:12px;font-weight:700;cursor:pointer;min-width:34px;';
+
+                function makePageBtn(label, page, disabled) {
+                    var btn = document.createElement('button');
+                    btn.textContent = label;
+                    btn.style.cssText = (page === accountsPage) ? activeBtnStyle : btnStyle;
+                    if (disabled) {
+                        btn.style.opacity = '0.4';
+                        btn.style.cursor = 'default';
+                    } else {
+                        btn.onclick = function() { accountsPage = page; renderAccountsPage(); };
+                    }
+                    return btn;
+                }
+
+                function makeEllipsis() {
+                    var span = document.createElement('span');
+                    span.textContent = '…';
+                    span.style.cssText = 'color:var(--text2);font-size:12px;padding:0 4px;';
+                    return span;
+                }
+
+                // Prev button
+                var prevBtn = document.createElement('button');
+                prevBtn.textContent = '‹';
+                prevBtn.style.cssText = btnStyle;
+                if (accountsPage <= 1) { prevBtn.style.opacity = '0.4'; prevBtn.style.cursor = 'default'; }
+                else prevBtn.onclick = function() { accountsPage--; renderAccountsPage(); };
+                btnContainer.appendChild(prevBtn);
+
+                // Page number logic: show first, last, current ±2, with ellipsis
+                var pages = [];
+                if (totalPages <= 9) {
+                    for (var i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                    pages.push(1);
+                    if (accountsPage > 4) pages.push('...');
+                    for (var i = Math.max(2, accountsPage - 2); i <= Math.min(totalPages - 1, accountsPage + 2); i++) pages.push(i);
+                    if (accountsPage < totalPages - 3) pages.push('...');
+                    pages.push(totalPages);
+                }
+
+                pages.forEach(function(p) {
+                    if (p === '...') {
+                        btnContainer.appendChild(makeEllipsis());
+                    } else {
+                        btnContainer.appendChild(makePageBtn(p, p, false));
+                    }
+                });
+
+                // Next button
+                var nextBtn = document.createElement('button');
+                nextBtn.textContent = '›';
+                nextBtn.style.cssText = btnStyle;
+                if (accountsPage >= totalPages) { nextBtn.style.opacity = '0.4'; nextBtn.style.cursor = 'default'; }
+                else nextBtn.onclick = function() { accountsPage++; renderAccountsPage(); };
+                btnContainer.appendChild(nextBtn);
             }
 
+            // Render rows
             body.innerHTML = '';
             pageItems.forEach(function(acc) {
                 const tr = document.createElement('tr');
