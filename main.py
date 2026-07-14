@@ -197,13 +197,15 @@ async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
 
 
 # ─── Outlook IMAP Helpers ─────────────────────────────────────────
-# Cache: outlook_email -> {"emails": [...], "fetched_at": monotonic_timestamp}
-# TTL dijaga cukup panjang (60s) supaya tidak login IMAP terlalu sering
-# (anti rate-limit / anti-block dari Microsoft).
-_outlook_email_cache: dict = {}
-OUTLOOK_CACHE_TTL = 60  # seconds
+# NOTE: IMAP fetch TIDAK dipanggil langsung dari request user (/api/scan,
+# /api/v1/inbox). Karena deployment serverless (Vercel), cache/koneksi
+# in-memory tidak reliable antar request (bisa kena instance berbeda-beda).
+# Sebagai gantinya, IMAP login dijalankan oleh job terjadwal terpisah
+# (lihat /api/cron/outlook-sync) yang menyimpan hasilnya ke Supabase.
+# Endpoint scan hanya membaca dari database — tidak pernah IMAP langsung.
 IMAP_HOST = "outlook.office365.com"
 IMAP_PORT = 993
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
 
 def _decode_mime_words(s: str) -> str:
@@ -272,12 +274,17 @@ def _extract_imap_body(msg) -> tuple[str, str]:
 
 
 def _imap_fetch_sync(email_addr: str, password: str) -> list[dict]:
-    """Blocking IMAP fetch — dipanggil lewat asyncio.to_thread() supaya
-    tidak memblokir event loop FastAPI."""
+    """Blocking IMAP fetch - dipanggil lewat asyncio.to_thread() supaya
+    tidak memblokir event loop FastAPI.
+
+    Error koneksi/login (password salah, IMAP disabled, dll) SENGAJA
+    di-raise ke caller supaya sync job bisa mencatatnya sebagai error
+    (biar admin tau akun mana yang bermasalah). Error per-pesan individual
+    tetap di-skip diam-diam supaya satu email rusak tidak menggagalkan
+    seluruh fetch."""
     results: list[dict] = []
-    conn = None
+    conn = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=15)
     try:
-        conn = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=15)
         conn.login(email_addr, password)
         conn.select("INBOX", readonly=True)
 
@@ -335,18 +342,15 @@ def _imap_fetch_sync(email_addr: str, password: str) -> list[dict]:
                 })
             except Exception:
                 continue
-    except Exception:
-        return []
     finally:
-        if conn is not None:
-            try:
-                conn.close()
-            except Exception:
-                pass
-            try:
-                conn.logout()
-            except Exception:
-                pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+        try:
+            conn.logout()
+        except Exception:
+            pass
     return results
 
 
@@ -356,16 +360,75 @@ async def _fetch_outlook_emails_uncached(email_addr: str, password: str) -> list
     return await asyncio.to_thread(_imap_fetch_sync, email_addr, password)
 
 
-async def _fetch_outlook_emails(email_addr: str, password: str) -> list[dict]:
-    """Fetch email Outlook via IMAP dengan cache TTL untuk mencegah
-    login IMAP terlalu sering (anti-block dari Microsoft)."""
-    now = time.monotonic()
-    cached = _outlook_email_cache.get(email_addr)
-    if cached and (now - cached["fetched_at"]) < OUTLOOK_CACHE_TTL:
-        return cached["emails"]
-    emails = await _fetch_outlook_emails_uncached(email_addr, password)
-    _outlook_email_cache[email_addr] = {"emails": emails, "fetched_at": now}
-    return emails
+async def _sync_all_outlook_accounts(db) -> dict:
+    """Loop semua akun Outlook di pool, IMAP fetch, simpan email baru ke DB.
+    Dipanggil oleh /api/cron/outlook-sync (dipicu scheduler eksternal),
+    BUKAN oleh request user — supaya frekuensi login IMAP terkontrol
+    dan tidak tergantung berapa banyak user yang scan."""
+    accounts: list[tuple[str, str]] = []
+
+    if USE_SUPABASE:
+        rows = await db.select("tokens", {
+            "source": "eq.outlook",
+            "select": "email,password",
+        })
+        accounts = [(r["email"], r.get("password") or "") for r in rows if r.get("password")]
+    else:
+        cursor = await db.execute(
+            "SELECT email, password FROM accounts WHERE source = 'outlook' AND password IS NOT NULL AND password != ''"
+        )
+        accounts = [(r["email"], r["password"]) for r in await cursor.fetchall()]
+
+    accounts_synced = 0
+    new_emails = 0
+    errors: list[str] = []
+
+    for email_addr, password in accounts:
+        try:
+            fetched = await _fetch_outlook_emails_uncached(email_addr, password)
+        except Exception as e:
+            errors.append(f"{email_addr}: {e}")
+            continue
+        accounts_synced += 1
+
+        for em in fetched:
+            external_id = em["id"]
+            try:
+                if USE_SUPABASE:
+                    existing = await db.select("emails", {
+                        "external_id": f"eq.{external_id}",
+                        "select": "id",
+                    })
+                    if existing:
+                        continue
+                    await db.insert("emails", {
+                        "recipient": email_addr,
+                        "sender": em["sender"],
+                        "subject": em["subject"],
+                        "body": em["body"],
+                        "received_at": em["received_at"],
+                        "external_id": external_id,
+                    })
+                    new_emails += 1
+                else:
+                    cursor = await db.execute(
+                        "SELECT id FROM emails WHERE external_id = ?", (external_id,)
+                    )
+                    if await cursor.fetchone():
+                        continue
+                    await db.execute(
+                        "INSERT INTO emails (recipient, sender, subject, body, received_at, external_id) VALUES (?, ?, ?, ?, ?, ?)",
+                        (email_addr, em["sender"], em["subject"], em["body"], em["received_at"], external_id),
+                    )
+                    new_emails += 1
+            except Exception as e:
+                errors.append(f"{email_addr}/{external_id}: {e}")
+                continue
+
+    if not USE_SUPABASE:
+        await db.commit()
+
+    return {"accounts_synced": accounts_synced, "new_emails": new_emails, "errors": errors}
 
 
 # ─── Supabase REST Client ────────────────────────────────────────
@@ -513,6 +576,12 @@ async def init_db():
             except Exception:
                 pass  # column already exists
 
+        # Migration: external_id untuk dedupe email hasil sync IMAP (outlook)
+        try:
+            await db.execute("ALTER TABLE emails ADD COLUMN external_id TEXT")
+        except Exception:
+            pass  # column already exists
+
         # Default settings
         await db.execute("""
             INSERT OR IGNORE INTO settings (key, value)
@@ -609,13 +678,16 @@ async def scan_token(
         )
     _scan_cooldown[token] = now
 
+    # NOTE: Untuk akun Outlook (source='outlook'), email sudah disinkron
+    # ke tabel `emails` oleh job terjadwal /api/cron/outlook-sync — jadi
+    # endpoint ini TIDAK PERNAH login IMAP langsung. Ini penting karena
+    # deployment serverless (Vercel) tidak bisa diandalkan untuk cache/
+    # koneksi in-memory antar request.
     if USE_SUPABASE:
-        rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email,password,source"})
+        rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email"})
         if not rows:
             raise HTTPException(status_code=404, detail="Invalid token")
         email_addr = rows[0]["email"]
-        account_password = rows[0].get("password") or ""
-        account_source = rows[0].get("source") or ""
         cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
         email_rows = await db.select("emails", {
             "recipient": f"eq.{email_addr}",
@@ -623,17 +695,7 @@ async def scan_token(
             "select": "id,sender,subject,body,received_at",
             "order": "received_at.desc",
         })
-        if account_source == "outlook" and account_password:
-            try:
-                outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
-                existing_ids = {str(e.get("id")) for e in email_rows}
-                for oe in outlook_emails:
-                    if oe["id"] not in existing_ids:
-                        email_rows.append(oe)
-                email_rows.sort(key=lambda x: x.get("received_at", ""), reverse=True)
-            except Exception:
-                pass
-        elif USE_GMAIL:
+        if USE_GMAIL:
             try:
                 gmail_emails = await _fetch_gmail_emails(email_addr)
                 existing_ids = {str(e.get("id")) for e in email_rows}
@@ -646,15 +708,13 @@ async def scan_token(
         return {"email": email_addr, "emails": email_rows}
 
     row = await db.execute(
-        "SELECT email, password, source FROM accounts WHERE token = ?", (token,)
+        "SELECT email FROM accounts WHERE token = ?", (token,)
     )
     account = await row.fetchone()
     if not account:
         raise HTTPException(status_code=404, detail="Invalid token")
 
     email_addr = account["email"]
-    account_password = account["password"] or ""
-    account_source = account["source"] or ""
     cutoff = datetime.now(timezone.utc).timestamp() - 86400  # 24h
 
     rows = await db.execute(
@@ -664,17 +724,7 @@ async def scan_token(
         (email_addr, str(int(cutoff))),
     )
     all_emails = [dict(r) for r in await rows.fetchall()]
-    if account_source == "outlook" and account_password:
-        try:
-            outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
-            existing_ids = {str(e.get("id")) for e in all_emails}
-            for oe in outlook_emails:
-                if oe["id"] not in existing_ids:
-                    all_emails.append(oe)
-            all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
-        except Exception:
-            pass
-    elif USE_GMAIL:
+    if USE_GMAIL:
         try:
             gmail_emails = await _fetch_gmail_emails(email_addr)
             existing_ids = {str(e.get("id")) for e in all_emails}
@@ -1081,6 +1131,21 @@ async def outlook_delete_account(account_id: int, request: Request, db=Depends(g
     return {"ok": True}
 
 
+# ─── Outlook IMAP Sync (dipicu scheduler eksternal) ──────────────
+# Endpoint ini yang benar-benar login IMAP ke Outlook, dipicu oleh
+# cron eksternal (cron-job.org / GitHub Actions) tiap 1-2 menit.
+# TIDAK dipicu oleh request user — supaya frekuensi login IMAP
+# tetap terkontrol berapa pun banyaknya user yang scan email.
+
+@app.post("/api/cron/outlook-sync")
+async def cron_outlook_sync(request: Request, db=Depends(get_db)):
+    secret = request.headers.get("x-cron-secret", "")
+    if not CRON_SECRET or secret != CRON_SECRET:
+        raise HTTPException(status_code=401, detail="Invalid or missing cron secret")
+    result = await _sync_all_outlook_accounts(db)
+    return result
+
+
 @app.post("/api/settings")
 async def update_settings(request: Request, db=Depends(get_db)):
     require_admin(request)
@@ -1326,21 +1391,19 @@ async def api_v1_inbox(
     if not token_val:
         raise HTTPException(400, "token is required")
 
+    # NOTE: Email Outlook sudah disinkron ke tabel `emails` oleh job
+    # /api/cron/outlook-sync — endpoint ini tidak pernah IMAP langsung.
     if USE_SUPABASE:
-        rows = await db.select("tokens", {"token_id": f"eq.{token_val}", "select": "email,password,source"})
+        rows = await db.select("tokens", {"token_id": f"eq.{token_val}", "select": "email"})
         if not rows:
             raise HTTPException(404, "Invalid token")
         email_addr = rows[0]["email"]
-        account_password = rows[0].get("password") or ""
-        account_source = rows[0].get("source") or ""
     else:
-        row = await db.execute("SELECT email, password, source FROM accounts WHERE token = ?", (token_val,))
+        row = await db.execute("SELECT email FROM accounts WHERE token = ?", (token_val,))
         account = await row.fetchone()
         if not account:
             raise HTTPException(404, "Invalid token")
         email_addr = account["email"]
-        account_password = account["password"] or ""
-        account_source = account["source"] or ""
 
     async def _fetch_emails():
         all_emails = []
@@ -1363,17 +1426,7 @@ async def api_v1_inbox(
             )
             all_emails.extend([dict(r) for r in await cursor.fetchall()])
 
-        if account_source == "outlook" and account_password:
-            try:
-                outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
-                existing_ids = {str(e.get("id")) for e in all_emails}
-                for oe in outlook_emails:
-                    if oe["id"] not in existing_ids:
-                        all_emails.append(oe)
-                all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
-            except Exception:
-                pass
-        elif USE_GMAIL:
+        if USE_GMAIL:
             try:
                 gmail_emails = await _fetch_gmail_emails(email_addr)
                 existing_ids = {str(e.get("id")) for e in all_emails}
