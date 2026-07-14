@@ -8,10 +8,13 @@ import string
 import random
 import hashlib
 import email.utils
+import imaplib
 import uuid
 import time
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
+from email import message_from_bytes as _email_from_bytes
+from email.header import decode_header as _decode_header
 
 import aiosqlite
 import httpx
@@ -190,6 +193,178 @@ async def _fetch_gmail_emails(email_addr: str) -> list[dict]:
         return cached["emails"]
     emails = await _fetch_gmail_emails_uncached(email_addr)
     _gmail_email_cache[email_addr] = {"emails": emails, "fetched_at": now}
+    return emails
+
+
+# ─── Outlook IMAP Helpers ─────────────────────────────────────────
+# Cache: outlook_email -> {"emails": [...], "fetched_at": monotonic_timestamp}
+# TTL dijaga cukup panjang (60s) supaya tidak login IMAP terlalu sering
+# (anti rate-limit / anti-block dari Microsoft).
+_outlook_email_cache: dict = {}
+OUTLOOK_CACHE_TTL = 60  # seconds
+IMAP_HOST = "outlook.office365.com"
+IMAP_PORT = 993
+
+
+def _decode_mime_words(s: str) -> str:
+    if not s:
+        return ""
+    try:
+        decoded_parts = _decode_header(s)
+    except Exception:
+        return s
+    result = []
+    for part, enc in decoded_parts:
+        if isinstance(part, bytes):
+            try:
+                result.append(part.decode(enc or "utf-8", errors="replace"))
+            except (LookupError, TypeError):
+                result.append(part.decode("utf-8", errors="replace"))
+        else:
+            result.append(part)
+    return "".join(result)
+
+
+def _extract_imap_body(msg) -> tuple[str, str]:
+    """Return (body, content_type) preferring HTML over plain text."""
+    html_body = ""
+    plain_body = ""
+    if msg.is_multipart():
+        for part in msg.walk():
+            content_type = part.get_content_type()
+            disposition = str(part.get("Content-Disposition") or "")
+            if "attachment" in disposition:
+                continue
+            try:
+                payload = part.get_payload(decode=True)
+            except Exception:
+                payload = None
+            if not payload:
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            try:
+                text = payload.decode(charset, errors="replace")
+            except (LookupError, TypeError):
+                text = payload.decode("utf-8", errors="replace")
+            if content_type == "text/html" and not html_body:
+                html_body = text
+            elif content_type == "text/plain" and not plain_body:
+                plain_body = text
+    else:
+        content_type = msg.get_content_type()
+        try:
+            payload = msg.get_payload(decode=True)
+        except Exception:
+            payload = None
+        if payload:
+            charset = msg.get_content_charset() or "utf-8"
+            try:
+                text = payload.decode(charset, errors="replace")
+            except (LookupError, TypeError):
+                text = payload.decode("utf-8", errors="replace")
+            if content_type == "text/html":
+                html_body = text
+            else:
+                plain_body = text
+    if html_body:
+        return html_body, "text/html"
+    return plain_body, "text/plain"
+
+
+def _imap_fetch_sync(email_addr: str, password: str) -> list[dict]:
+    """Blocking IMAP fetch — dipanggil lewat asyncio.to_thread() supaya
+    tidak memblokir event loop FastAPI."""
+    results: list[dict] = []
+    conn = None
+    try:
+        conn = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=15)
+        conn.login(email_addr, password)
+        conn.select("INBOX", readonly=True)
+
+        cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff_str = cutoff_dt.strftime("%d-%b-%Y")
+        status, data = conn.search(None, f'(SINCE "{cutoff_str}")')
+        if status != "OK" or not data or not data[0]:
+            return []
+
+        ids = data[0].split()
+        ids = ids[-20:]  # batasi 20 email terbaru biar ringan
+        ids.reverse()
+
+        for msg_id in ids:
+            try:
+                status, msg_data = conn.fetch(msg_id, "(RFC822)")
+                if status != "OK" or not msg_data or not msg_data[0]:
+                    continue
+                raw = msg_data[0][1]
+                msg = _email_from_bytes(raw)
+
+                subject = _decode_mime_words(msg.get("Subject", ""))
+                sender = _decode_mime_words(msg.get("From", ""))
+                date_str = msg.get("Date", "")
+                received_at = date_str
+                if date_str:
+                    try:
+                        parsed = email.utils.parsedate_to_datetime(date_str)
+                        if parsed.tzinfo is None:
+                            parsed = parsed.replace(tzinfo=timezone.utc)
+                        received_at = parsed.astimezone(timezone.utc).isoformat()
+                    except Exception:
+                        pass
+
+                # Buang email yang lebih tua dari 24 jam (retensi konsisten)
+                try:
+                    parsed_check = datetime.fromisoformat(received_at)
+                    if parsed_check < cutoff_dt:
+                        continue
+                except Exception:
+                    pass
+
+                body, content_type = _extract_imap_body(msg)
+                raw_id = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
+                uid = msg.get("Message-ID") or raw_id
+                hashed = hashlib.sha256(uid.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+                results.append({
+                    "id": f"outlook-{hashed}",
+                    "sender": sender,
+                    "subject": subject,
+                    "body": body,
+                    "content_type": content_type,
+                    "received_at": received_at,
+                })
+            except Exception:
+                continue
+    except Exception:
+        return []
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            try:
+                conn.logout()
+            except Exception:
+                pass
+    return results
+
+
+async def _fetch_outlook_emails_uncached(email_addr: str, password: str) -> list[dict]:
+    if not password:
+        return []
+    return await asyncio.to_thread(_imap_fetch_sync, email_addr, password)
+
+
+async def _fetch_outlook_emails(email_addr: str, password: str) -> list[dict]:
+    """Fetch email Outlook via IMAP dengan cache TTL untuk mencegah
+    login IMAP terlalu sering (anti-block dari Microsoft)."""
+    now = time.monotonic()
+    cached = _outlook_email_cache.get(email_addr)
+    if cached and (now - cached["fetched_at"]) < OUTLOOK_CACHE_TTL:
+        return cached["emails"]
+    emails = await _fetch_outlook_emails_uncached(email_addr, password)
+    _outlook_email_cache[email_addr] = {"emails": emails, "fetched_at": now}
     return emails
 
 
@@ -435,10 +610,12 @@ async def scan_token(
     _scan_cooldown[token] = now
 
     if USE_SUPABASE:
-        rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email"})
+        rows = await db.select("tokens", {"token_id": f"eq.{token}", "select": "email,password,source"})
         if not rows:
             raise HTTPException(status_code=404, detail="Invalid token")
         email_addr = rows[0]["email"]
+        account_password = rows[0].get("password") or ""
+        account_source = rows[0].get("source") or ""
         cutoff_dt = datetime.now(timezone.utc) - timedelta(hours=24)
         email_rows = await db.select("emails", {
             "recipient": f"eq.{email_addr}",
@@ -446,7 +623,17 @@ async def scan_token(
             "select": "id,sender,subject,body,received_at",
             "order": "received_at.desc",
         })
-        if USE_GMAIL:
+        if account_source == "outlook" and account_password:
+            try:
+                outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
+                existing_ids = {str(e.get("id")) for e in email_rows}
+                for oe in outlook_emails:
+                    if oe["id"] not in existing_ids:
+                        email_rows.append(oe)
+                email_rows.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+            except Exception:
+                pass
+        elif USE_GMAIL:
             try:
                 gmail_emails = await _fetch_gmail_emails(email_addr)
                 existing_ids = {str(e.get("id")) for e in email_rows}
@@ -459,13 +646,15 @@ async def scan_token(
         return {"email": email_addr, "emails": email_rows}
 
     row = await db.execute(
-        "SELECT email FROM accounts WHERE token = ?", (token,)
+        "SELECT email, password, source FROM accounts WHERE token = ?", (token,)
     )
     account = await row.fetchone()
     if not account:
         raise HTTPException(status_code=404, detail="Invalid token")
 
     email_addr = account["email"]
+    account_password = account["password"] or ""
+    account_source = account["source"] or ""
     cutoff = datetime.now(timezone.utc).timestamp() - 86400  # 24h
 
     rows = await db.execute(
@@ -475,7 +664,17 @@ async def scan_token(
         (email_addr, str(int(cutoff))),
     )
     all_emails = [dict(r) for r in await rows.fetchall()]
-    if USE_GMAIL:
+    if account_source == "outlook" and account_password:
+        try:
+            outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
+            existing_ids = {str(e.get("id")) for e in all_emails}
+            for oe in outlook_emails:
+                if oe["id"] not in existing_ids:
+                    all_emails.append(oe)
+            all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+        except Exception:
+            pass
+    elif USE_GMAIL:
         try:
             gmail_emails = await _fetch_gmail_emails(email_addr)
             existing_ids = {str(e.get("id")) for e in all_emails}
@@ -1128,16 +1327,20 @@ async def api_v1_inbox(
         raise HTTPException(400, "token is required")
 
     if USE_SUPABASE:
-        rows = await db.select("tokens", {"token_id": f"eq.{token_val}", "select": "email"})
+        rows = await db.select("tokens", {"token_id": f"eq.{token_val}", "select": "email,password,source"})
         if not rows:
             raise HTTPException(404, "Invalid token")
         email_addr = rows[0]["email"]
+        account_password = rows[0].get("password") or ""
+        account_source = rows[0].get("source") or ""
     else:
-        row = await db.execute("SELECT email FROM accounts WHERE token = ?", (token_val,))
+        row = await db.execute("SELECT email, password, source FROM accounts WHERE token = ?", (token_val,))
         account = await row.fetchone()
         if not account:
             raise HTTPException(404, "Invalid token")
         email_addr = account["email"]
+        account_password = account["password"] or ""
+        account_source = account["source"] or ""
 
     async def _fetch_emails():
         all_emails = []
@@ -1160,7 +1363,17 @@ async def api_v1_inbox(
             )
             all_emails.extend([dict(r) for r in await cursor.fetchall()])
 
-        if USE_GMAIL:
+        if account_source == "outlook" and account_password:
+            try:
+                outlook_emails = await _fetch_outlook_emails(email_addr, account_password)
+                existing_ids = {str(e.get("id")) for e in all_emails}
+                for oe in outlook_emails:
+                    if oe["id"] not in existing_ids:
+                        all_emails.append(oe)
+                all_emails.sort(key=lambda x: x.get("received_at", ""), reverse=True)
+            except Exception:
+                pass
+        elif USE_GMAIL:
             try:
                 gmail_emails = await _fetch_gmail_emails(email_addr)
                 existing_ids = {str(e.get("id")) for e in all_emails}
